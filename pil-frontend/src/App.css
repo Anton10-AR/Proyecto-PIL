@@ -1,0 +1,170 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f4f6f8;
+  color: #1f2937;
+}
+
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header h1 {
+  margin-bottom: 0.2rem;
+  font-size: 1.4rem;
+}
+
+.subtitulo {
+  color: #6b7280;
+  margin-top: 0;
+}
+
+nav {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+nav button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+nav button.activa {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+main {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.formulario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.formulario input, .formulario select {
+  padding: 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.acciones-formulario {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.columnas {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.columnas .formulario {
+  flex: 1;
+  min-width: 250px;
+}
+
+.busqueda {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.9rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+}
+
+.tarjetas {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tarjeta {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+}
+
+.tarjeta-valor {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #2563eb;
+}
+
+.tarjeta-etiqueta {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.barras {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 500px;
+}
+
+.barra-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.barra-etiqueta {
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.barra-fondo {
+  background: #e5e7eb;
+  border-radius: 4px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.barra-relleno {
+  height: 100%;
+  border-radius: 4px;
+}
