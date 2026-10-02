@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repositorio
 
-Este es un prototipo académico (proyecto PIL) de un sistema de RR.HH. para PIL Andina, compuesto por dos paquetes npm independientes sin workspace compartido: `pil-backend` (API) y `pil-frontend` (SPA). No es un repositorio git (`git init` sería necesario antes de usar comandos de control de versiones).
+Este es un prototipo académico (proyecto PIL) de un sistema de RR.HH. para PIL Andina, compuesto por dos paquetes npm independientes sin workspace compartido: `pil-backend` (API) y `pil-frontend` (SPA). El repositorio está en GitHub (`origin` → `Anton10-AR/Proyecto-PIL`, rama `main`).
 
 ## Comandos
 
