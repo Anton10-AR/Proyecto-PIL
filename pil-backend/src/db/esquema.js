@@ -16,7 +16,9 @@ const TABLAS = [
   "feriados",
   "asistencia",
   "ausencias",
-  "solicitudes"
+  "tipos_permiso",
+  "solicitudes",
+  "aprobaciones_solicitud"
 ];
 
 function crearEsquema(db) {
@@ -157,18 +159,59 @@ function crearEsquema(db) {
       FOREIGN KEY (id_registrado_por) REFERENCES usuarios(id)
     );
 
+    -- Catálogo de tipos de permiso (RRHH lo mantiene). limite_anual_dias NULL = sin límite anual;
+    -- el límite se cuenta por año calendario sobre los días hábiles de solicitudes activas.
+    CREATE TABLE IF NOT EXISTS tipos_permiso (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL UNIQUE,
+      descripcion TEXT,
+      dias_max_solicitud INTEGER NOT NULL CHECK (dias_max_solicitud > 0),
+      limite_anual_dias INTEGER CHECK (limite_anual_dias IS NULL OR limite_anual_dias > 0),
+      requiere_respaldo INTEGER NOT NULL DEFAULT 0 CHECK (requiere_respaldo IN (0, 1)),
+      con_goce INTEGER NOT NULL DEFAULT 1 CHECK (con_goce IN (0, 1)),
+      activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+    );
+
+    -- Solicitudes de permiso o vacación. Flujo de estados:
+    --   pendiente_supervisor -> pendiente_rrhh -> aprobado   (trabajador con supervisor)
+    --   pendiente_gerencia -> aprobado                        (personal de RRHH, Gerencia o sin supervisor)
+    --   cualquier pendiente -> rechazado | cancelado (cancela el propio trabajador)
+    -- gestion_inicio: para vacaciones, gestión (año de servicio) de la que se descuentan los días.
     CREATE TABLE IF NOT EXISTS solicitudes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       id_trabajador INTEGER NOT NULL,
       tipo TEXT NOT NULL CHECK (tipo IN ('permiso', 'vacacion')),
+      id_tipo_permiso INTEGER,
       fecha_inicio TEXT NOT NULL,
       fecha_fin TEXT NOT NULL,
+      dias_habiles INTEGER NOT NULL CHECK (dias_habiles > 0),
+      gestion_inicio TEXT,
       motivo TEXT,
-      estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','aprobado','rechazado','cancelado')),
+      estado TEXT NOT NULL CHECK (estado IN
+        ('pendiente_supervisor', 'pendiente_rrhh', 'pendiente_gerencia', 'aprobado', 'rechazado', 'cancelado')),
+      id_archivo_respaldo INTEGER,
       fecha_solicitud TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-      id_aprobador INTEGER,
+      fecha_resolucion TEXT,
+      CHECK (fecha_fin >= fecha_inicio),
+      CHECK ((tipo = 'permiso' AND id_tipo_permiso IS NOT NULL) OR (tipo = 'vacacion' AND id_tipo_permiso IS NULL)),
       FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id),
-      FOREIGN KEY (id_aprobador) REFERENCES trabajadores(id)
+      FOREIGN KEY (id_tipo_permiso) REFERENCES tipos_permiso(id),
+      FOREIGN KEY (id_archivo_respaldo) REFERENCES archivos(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_solicitudes_trabajador ON solicitudes(id_trabajador, estado);
+
+    -- Cada decisión tomada sobre una solicitud (de aquí sale el tiempo por etapa)
+    CREATE TABLE IF NOT EXISTS aprobaciones_solicitud (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_solicitud INTEGER NOT NULL,
+      etapa TEXT NOT NULL CHECK (etapa IN ('supervisor', 'rrhh', 'gerencia')),
+      id_aprobador INTEGER NOT NULL,
+      decision TEXT NOT NULL CHECK (decision IN ('aprobado', 'rechazado')),
+      comentario TEXT,
+      fecha TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      UNIQUE (id_solicitud, etapa),
+      FOREIGN KEY (id_solicitud) REFERENCES solicitudes(id),
+      FOREIGN KEY (id_aprobador) REFERENCES usuarios(id)
     );
   `);
 

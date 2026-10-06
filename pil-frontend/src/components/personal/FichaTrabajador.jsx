@@ -7,7 +7,7 @@ import {
   crearCuenta, actualizarCuenta, restablecerClave
 } from "../../api/trabajadores";
 import { NOMBRES_ROL, ROLES } from "../../roles";
-import { fechaCorta, textoRetraso } from "../../formato";
+import { ESTADOS_SOLICITUD, fechaCorta, rangoFechas, textoRetraso, textoTipoSolicitud } from "../../formato";
 
 function Dato({ etiqueta, valor }) {
   return (
@@ -146,6 +146,12 @@ export default function FichaTrabajador() {
           <Dato etiqueta="Tipo de contrato" valor={trabajador.tipo_contrato} />
           <Dato etiqueta="Supervisor" valor={trabajador.nombre_supervisor} />
           <Dato
+            etiqueta="Vacaciones disponibles"
+            valor={trabajador.saldo_vacaciones.gestion_inicio
+              ? `${trabajador.saldo_vacaciones.disponibles} de ${trabajador.saldo_vacaciones.dias} días (gestión desde ${fechaCorta(trabajador.saldo_vacaciones.gestion_inicio)})`
+              : "Sin derecho aún (menos de un año de servicio)"}
+          />
+          <Dato
             etiqueta="Turno vigente"
             valor={trabajador.turno_vigente && `${trabajador.turno_vigente.nombre} (${trabajador.turno_vigente.hora_inicio}–${trabajador.turno_vigente.hora_fin})`}
           />
@@ -232,12 +238,14 @@ export default function FichaTrabajador() {
         {pestana === "solicitudes" && (
           <div className="tabla-contenedor">
             <table>
-              <thead><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Motivo</th><th>Estado</th><th>Solicitada</th></tr></thead>
+              <thead><tr><th>Tipo</th><th>Fechas</th><th>Días</th><th>Motivo</th><th>Estado</th><th>Solicitada</th></tr></thead>
               <tbody>
                 {historial.solicitudes.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.tipo === "vacacion" ? "Vacación" : "Permiso"}</td><td>{s.fecha_inicio}</td><td>{s.fecha_fin}</td>
-                    <td>{s.motivo || "—"}</td><td>{s.estado}</td><td>{s.fecha_solicitud}</td>
+                    <td>{textoTipoSolicitud(s)}</td><td>{rangoFechas(s.fecha_inicio, s.fecha_fin)}</td><td>{s.dias_habiles}</td>
+                    <td>{s.motivo || "—"}</td>
+                    <td><span className={`insignia ${ESTADOS_SOLICITUD[s.estado].clase}`}>{ESTADOS_SOLICITUD[s.estado].texto}</span></td>
+                    <td>{s.fecha_solicitud}</td>
                   </tr>
                 ))}
                 {historial.solicitudes.length === 0 && <tr><td colSpan={6} className="vacio">Sin solicitudes.</td></tr>}

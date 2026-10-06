@@ -6,6 +6,7 @@ const { permitirRoles } = require("../middleware/auth");
 const { filtroVisibilidad, puedeVerTrabajador } = require("../utils/visibilidad");
 const { hashearClave } = require("../utils/claves");
 const { turnoVigente } = require("../utils/jornada");
+const { saldoVacaciones } = require("../utils/solicitudes");
 const { hoyLocal } = require("../utils/fechas");
 
 const router = express.Router();
@@ -135,11 +136,19 @@ router.get("/:id", (req, res) => {
       SELECT * FROM ausencias WHERE id_trabajador = ? ORDER BY fecha DESC
     `).all(trabajador.id),
     solicitudes: db.prepare(`
-      SELECT * FROM solicitudes WHERE id_trabajador = ? ORDER BY fecha_solicitud DESC
+      SELECT s.*, tp.nombre AS tipo_permiso FROM solicitudes s
+      LEFT JOIN tipos_permiso tp ON tp.id = s.id_tipo_permiso
+      WHERE s.id_trabajador = ? ORDER BY s.fecha_solicitud DESC
     `).all(trabajador.id)
   };
 
-  res.json({ ...trabajador, turno_vigente: turnoVigente(trabajador.id, hoyLocal()), equipo, historial });
+  res.json({
+    ...trabajador,
+    turno_vigente: turnoVigente(trabajador.id, hoyLocal()),
+    saldo_vacaciones: saldoVacaciones(trabajador.id),
+    equipo,
+    historial
+  });
 });
 
 // Registrar un nuevo trabajador junto con su cuenta de acceso (solo RRHH)

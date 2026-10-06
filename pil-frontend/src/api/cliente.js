@@ -18,27 +18,51 @@ export function borrarToken() {
   try { localStorage.removeItem(CLAVE_TOKEN); } catch { /* nada que borrar */ }
 }
 
-export async function peticion(ruta, { metodo = "GET", cuerpo } = {}) {
+// cuerpo: objeto (se envía como JSON) o FormData (subida de archivos; el navegador pone el Content-Type)
+async function enviar(ruta, { metodo = "GET", cuerpo } = {}) {
   const headers = {};
   const token = obtenerToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (cuerpo !== undefined) headers["Content-Type"] = "application/json";
+  const esFormulario = cuerpo instanceof FormData;
+  if (cuerpo !== undefined && !esFormulario) headers["Content-Type"] = "application/json";
 
   const res = await fetch(`${BASE_URL}${ruta}`, {
     method: metodo,
     headers,
-    body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined
+    body: cuerpo === undefined ? undefined : esFormulario ? cuerpo : JSON.stringify(cuerpo)
   });
-  const datos = await res.json().catch(() => ({}));
 
   if (res.status === 401 && token) {
     borrarToken();
     window.dispatchEvent(new Event(EVENTO_SESION_EXPIRADA));
   }
   if (!res.ok) {
+    const datos = await res.json().catch(() => ({}));
     throw new Error(datos.error || "Error en la solicitud");
   }
-  return datos;
+  return res;
+}
+
+export async function peticion(ruta, opciones) {
+  const res = await enviar(ruta, opciones);
+  return res.json().catch(() => ({}));
+}
+
+// Descarga un archivo protegido (requiere el token, así que no sirve un <a href> directo)
+// y lo muestra en una pestaña nueva. La pestaña se abre antes de esperar la descarga para que
+// el navegador no la bloquee como ventana emergente (debe abrirse dentro del clic del usuario).
+export async function abrirArchivo(ruta) {
+  const ventana = window.open("", "_blank");
+  try {
+    const res = await enviar(ruta);
+    const url = URL.createObjectURL(await res.blob());
+    if (ventana) ventana.location.href = url;
+    else window.location.assign(url);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (err) {
+    ventana?.close();
+    throw err;
+  }
 }
 
 // Arma "?a=1&b=2" omitiendo los valores vacíos

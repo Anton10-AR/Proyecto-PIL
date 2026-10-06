@@ -6,10 +6,11 @@ import { listarAusencias } from "../../api/ausencias";
 import { fechaCorta, mesActual, textoRetraso } from "../../formato";
 
 function TarjetaHoy({ dia, alMarcar, procesando }) {
-  const { turno, feriado, laborable, registro, ausencia } = dia;
+  const { turno, feriado, laborable, registro, ausencia, solicitud } = dia;
 
   let descripcion;
-  if (feriado) descripcion = `Hoy es feriado: ${feriado.descripcion}.`;
+  if (solicitud) descripcion = `Hoy está de ${solicitud.tipo === "vacacion" ? "vacaciones" : `permiso (${solicitud.tipo_permiso})`}, del ${fechaCorta(solicitud.fecha_inicio)} al ${fechaCorta(solicitud.fecha_fin)}.`;
+  else if (feriado) descripcion = `Hoy es feriado: ${feriado.descripcion}.`;
   else if (!turno) descripcion = "No tiene un turno asignado. Consulte con RRHH.";
   else if (!laborable) descripcion = `Hoy no es día laborable de su turno ${turno.nombre}.`;
   else descripcion = `Turno ${turno.nombre}: ${turno.hora_inicio} a ${turno.hora_fin} (tolerancia ${dia.tolerancia_minutos} min).`;
@@ -19,7 +20,7 @@ function TarjetaHoy({ dia, alMarcar, procesando }) {
       <div>
         <span className="tarjeta-hoy-fecha">{fechaCorta(dia.fecha)}</span>
         <p>{descripcion}</p>
-        {!laborable && !registro && !ausencia && (
+        {!laborable && !registro && !ausencia && !solicitud && (
           <p className="ayuda">Si marca hoy, el registro quedará como "fuera de turno".</p>
         )}
       </div>
@@ -28,7 +29,7 @@ function TarjetaHoy({ dia, alMarcar, procesando }) {
         {ausencia && (
           <p className="aviso">RRHH registró una ausencia {ausencia.justificada ? "justificada" : "injustificada"} para hoy.</p>
         )}
-        {!ausencia && !registro && (
+        {!ausencia && !solicitud && !registro && (
           <button className="boton-primario boton-grande" onClick={() => alMarcar("entrada")} disabled={procesando}>
             Marcar entrada
           </button>

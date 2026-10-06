@@ -37,8 +37,10 @@ router.get("/resumen", (req, res) => {
     "SELECT AVG(horas_trabajadas) AS promedio FROM asistencia WHERE fecha LIKE ? AND horas_trabajadas IS NOT NULL"
   ).get(`${mes}%`).promedio;
 
+  // Los tres estados pendientes (supervisor, RRHH, Gerencia) se agrupan como "pendiente"
   const solicitudesPorEstado = db.prepare(`
-    SELECT estado, COUNT(*) AS total FROM solicitudes GROUP BY estado
+    SELECT CASE WHEN estado LIKE 'pendiente%' THEN 'pendiente' ELSE estado END AS estado, COUNT(*) AS total
+    FROM solicitudes GROUP BY 1
   `).all();
 
   const estados = { pendiente: 0, aprobado: 0, rechazado: 0, cancelado: 0 };

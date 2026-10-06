@@ -4,7 +4,18 @@ const db = require("./db/database");
 const { TABLAS, crearEsquema } = require("./db/esquema");
 const { hashearClave } = require("./utils/claves");
 const { hoyLocal, sumarDias, diaSemana, minutosDelDia, calcularHoras, calcularRetraso } = require("./utils/fechas");
+const fs = require("fs");
+const path = require("path");
 const { jornadaDelDia, toleranciaMinutos } = require("./utils/jornada");
+const { diasHabilesEntre, solicitudAprobadaEn } = require("./utils/solicitudes");
+const { calcularDerechoVacaciones } = require("./utils/vacaciones");
+const { CARPETA: CARPETA_ARCHIVOS } = require("./routes/archivos");
+
+// PDF mínimo válido de una página, usado como documento de respaldo de ejemplo
+const PDF_EJEMPLO = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" +
+  "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 120]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n" +
+  "4 0 obj<</Length 55>>stream\nBT /F1 14 Tf 20 60 Td (Certificado medico de ejemplo) Tj ET\nendstream endobj\n" +
+  "5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
 
 // Recrea el esquema desde cero: así los cambios de esquema de cada fase se aplican al correr el seed
 function recrearEsquema() {
@@ -14,8 +25,9 @@ function recrearEsquema() {
   crearEsquema(db);
 }
 
-console.log("Recreando el esquema...");
+console.log("Recreando el esquema y vaciando la carpeta de archivos subidos...");
 recrearEsquema();
+fs.readdirSync(CARPETA_ARCHIVOS).forEach((archivo) => fs.unlinkSync(path.join(CARPETA_ARCHIVOS, archivo)));
 
 console.log("Insertando trabajadores...");
 const insertarTrabajador = db.prepare(`
@@ -67,23 +79,6 @@ db.prepare(`
   SELECT id, 'bienvenida', 'Bienvenido al nuevo Sistema de RR.HH. de PIL Andina', '/' FROM usuarios
 `).run();
 
-console.log("Insertando solicitudes (variadas en tipo y estado)...");
-const insertarSolicitud = db.prepare(`
-  INSERT INTO solicitudes (id_trabajador, tipo, fecha_inicio, fecha_fin, motivo, estado, id_aprobador)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
-
-const solicitudes = [
-  [2, "vacacion", "2026-10-01", "2026-10-10", "Vacación anual", "aprobado", 1],
-  [3, "permiso", "2026-09-18", "2026-09-18", "Trámite personal", "pendiente", null],
-  [5, "permiso", "2026-09-20", "2026-09-20", "Cita médica", "aprobado", 4],
-  [6, "vacacion", "2026-11-05", "2026-11-15", "Vacación anual", "pendiente", null],
-  [7, "permiso", "2026-09-10", "2026-09-10", "Asunto familiar", "rechazado", null],
-  [2, "permiso", "2026-08-20", "2026-08-20", "Trámite bancario", "cancelado", null]
-];
-
-solicitudes.forEach((s) => insertarSolicitud.run(...s));
-
 console.log("Insertando turnos, feriados y asignaciones...");
 const insertarTurno = db.prepare(
   "INSERT INTO turnos (nombre, hora_inicio, hora_fin, dias_laborables) VALUES (?, ?, ?, ?)"
@@ -120,6 +115,88 @@ const insertarAsignacion = db.prepare(`
 `);
 asignaciones.forEach((a) => insertarAsignacion.run(...a));
 
+const hoy = hoyLocal();
+
+console.log("Insertando tipos de permiso...");
+// [nombre, descripcion, dias_max_solicitud, limite_anual_dias, requiere_respaldo, con_goce]
+// Valores de ejemplo: RRHH los ajusta desde Configuración.
+const tiposPermiso = [
+  ["Médico", "Enfermedad o consulta médica, con certificado", 3, null, 1, 1],
+  ["Personal", "Trámites o asuntos personales", 1, 3, 0, 0],
+  ["Duelo", "Fallecimiento de un familiar directo", 3, null, 1, 1],
+  ["Matrimonio", "Matrimonio del trabajador", 3, null, 1, 1],
+  ["Maternidad", "Descanso pre y post natal", 90, null, 1, 1],
+  ["Paternidad", "Nacimiento de un hijo", 3, null, 1, 1],
+  ["Estudios", "Exámenes o defensa de grado", 1, 5, 1, 1]
+];
+const insertarTipoPermiso = db.prepare(`
+  INSERT INTO tipos_permiso (nombre, descripcion, dias_max_solicitud, limite_anual_dias, requiere_respaldo, con_goce)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+tiposPermiso.forEach((t) => insertarTipoPermiso.run(...t));
+const idTipo = (nombre) => tiposPermiso.findIndex((t) => t[0] === nombre) + 1;
+
+console.log("Insertando solicitudes con su flujo de aprobación...");
+// Archivo de respaldo de ejemplo (un PDF mínimo) para el permiso médico de Rosa
+const nombreRespaldo = "certificado-medico-ejemplo.pdf";
+fs.writeFileSync(path.join(CARPETA_ARCHIVOS, nombreRespaldo), PDF_EJEMPLO);
+const idArchivoRespaldo = db.prepare(`
+  INSERT INTO archivos (nombre_original, ruta, mime, tamano, id_subido_por) VALUES (?, ?, 'application/pdf', ?, 5)
+`).run("Certificado médico.pdf", nombreRespaldo, Buffer.byteLength(PDF_EJEMPLO)).lastInsertRowid;
+
+// Primer día laborable del trabajador a partir de una fecha (para que el ejemplo valga cualquier día que se corra)
+function primerDiaLaborable(idTrabajador, fecha) {
+  let f = fecha;
+  while (!jornadaDelDia(idTrabajador, f).laborable) f = sumarDias(f, 1);
+  return f;
+}
+
+const fechaHora = (dias, hora) => `${sumarDias(hoy, dias)} ${hora}`;
+const insertarSolicitud = db.prepare(`
+  INSERT INTO solicitudes (id_trabajador, tipo, id_tipo_permiso, fecha_inicio, fecha_fin, dias_habiles, gestion_inicio,
+    motivo, estado, id_archivo_respaldo, fecha_solicitud, fecha_resolucion)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const insertarAprobacion = db.prepare(`
+  INSERT INTO aprobaciones_solicitud (id_solicitud, etapa, id_aprobador, decision, comentario, fecha) VALUES (?, ?, ?, ?, ?, ?)
+`);
+
+// Usuarios aprobadores (id de usuarios): 1 Ana (sup.), 4 Luis (sup.), 7 Elena (RRHH), 8 Jorge (Gerencia).
+// desde/hasta: días relativos a hoy. aprobaciones: [etapa, id_usuario, decision, comentario, días después de pedida]
+const solicitudes = [
+  { id: 2, tipo: "vacacion", desde: -5, hasta: 4, motivo: "Vacación anual", estado: "aprobado", pedida: -20,
+    aprobaciones: [["supervisor", 1, "aprobado", null, 1], ["rrhh", 7, "aprobado", null, 2]] },
+  { id: 3, tipo: "permiso", permiso: "Personal", desde: 3, motivo: "Trámite en el SEGIP", estado: "pendiente_supervisor", pedida: -1 },
+  { id: 5, tipo: "permiso", permiso: "Médico", desde: -15, motivo: "Consulta y estudios médicos", estado: "aprobado", pedida: -16,
+    archivo: idArchivoRespaldo, aprobaciones: [["supervisor", 4, "aprobado", null, 0], ["rrhh", 7, "aprobado", "Certificado verificado", 1]] },
+  { id: 6, tipo: "vacacion", desde: 34, hasta: 39, motivo: "Viaje familiar", estado: "pendiente_gerencia", pedida: -2 },
+  { id: 7, tipo: "permiso", permiso: "Personal", desde: -26, motivo: "Asunto familiar", estado: "rechazado", pedida: -30,
+    aprobaciones: [["gerencia", 8, "rechazado", "Cierre de planillas esa semana; reprogramar", 2]] },
+  { id: 2, tipo: "permiso", permiso: "Personal", desde: -48, motivo: "Trámite bancario", estado: "cancelado", pedida: -50 },
+  { id: 4, tipo: "vacacion", desde: 13, hasta: 17, motivo: "Descanso", estado: "pendiente_gerencia", pedida: -3 },
+  { id: 5, tipo: "vacacion", desde: 20, hasta: 24, motivo: "Vacación anual", estado: "pendiente_rrhh", pedida: -4,
+    aprobaciones: [["supervisor", 4, "aprobado", null, 1]] },
+  { id: 1, tipo: "vacacion", desde: 76, hasta: 86, motivo: "Fin de año", estado: "aprobado", pedida: -10,
+    aprobaciones: [["gerencia", 8, "aprobado", null, 3]] }
+];
+
+solicitudes.forEach((s) => {
+  const inicio = primerDiaLaborable(s.id, sumarDias(hoy, s.desde));
+  const fin = s.hasta === undefined ? inicio : sumarDias(hoy, s.hasta);
+  const ingreso = trabajadores[s.id - 1][5];
+  const gestion = s.tipo === "vacacion" ? calcularDerechoVacaciones(ingreso, hoy).gestion_inicio : null;
+  const ultima = s.aprobaciones?.[s.aprobaciones.length - 1];
+  const resolucion = ["aprobado", "rechazado"].includes(s.estado) ? fechaHora(s.pedida + ultima[4], "11:30:00") : null;
+
+  const idSolicitud = insertarSolicitud.run(
+    s.id, s.tipo, s.permiso ? idTipo(s.permiso) : null, inicio, fin, diasHabilesEntre(s.id, inicio, fin), gestion,
+    s.motivo, s.estado, s.archivo || null, fechaHora(s.pedida, "09:15:00"), resolucion
+  ).lastInsertRowid;
+  (s.aprobaciones || []).forEach(([etapa, idUsuario, decision, comentario, diasDespues], n) => {
+    insertarAprobacion.run(idSolicitud, etapa, idUsuario, decision, comentario, fechaHora(s.pedida + diasDespues, `1${n}:30:00`));
+  });
+});
+
 console.log("Insertando asistencia y ausencias de las últimas dos semanas...");
 const insertarAsistencia = db.prepare(`
   INSERT INTO asistencia (id_trabajador, fecha, hora_entrada, hora_salida, id_turno, minutos_retraso, horas_trabajadas)
@@ -129,11 +206,7 @@ const insertarAusencia = db.prepare(`
   INSERT INTO ausencias (id_trabajador, fecha, justificada, motivo, id_registrado_por) VALUES (?, ?, ?, ?, 7)
 `);
 
-const hoy = hoyLocal();
 const tolerancia = toleranciaMinutos();
-const enVacacionAprobada = (id, fecha) => solicitudes.some(
-  ([idT, , desde, hasta, , estado]) => idT === id && estado === "aprobado" && desde <= fecha && fecha <= hasta
-);
 // Variación determinista para que cada corrida del seed genere los mismos datos relativos
 const variacion = (id, dias, rango) => (id * 37 + dias * 17) % rango;
 const sumarMinutos = (hora, minutos) => {
@@ -147,7 +220,7 @@ for (let dias = 13; dias >= 0; dias--) {
   const fecha = sumarDias(hoy, -dias);
   [1, 2, 3, 4, 5, 6, 7, 9].forEach((id) => {
     const { turno, laborable } = jornadaDelDia(id, fecha);
-    if (!laborable || enVacacionAprobada(id, fecha)) return;
+    if (!laborable || solicitudAprobadaEn(id, fecha)) return;
 
     // Algunas ausencias registradas por RRHH para que los reportes tengan variedad
     if (id === 6 && dias === 8) {
@@ -188,4 +261,4 @@ cuentas.forEach(([idTrabajador, usuario, rol]) => {
 });
 console.log(`- ${turnos.length} turnos, ${feriados.length} feriados y ${asignaciones.length} asignaciones de turno`);
 console.log(`- ${totalAsistencia} marcaciones de asistencia y ${totalAusencias} ausencias (últimas dos semanas)`);
-console.log(`- ${solicitudes.length} solicitudes en distintos estados`);
+console.log(`- ${tiposPermiso.length} tipos de permiso y ${solicitudes.length} solicitudes en distintos estados del flujo`);

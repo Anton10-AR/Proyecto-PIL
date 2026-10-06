@@ -8,7 +8,9 @@ import AsistenciaPersonal from "./components/asistencia/AsistenciaPersonal";
 import Ausencias from "./components/asistencia/Ausencias";
 import Turnos from "./components/turnos/Turnos";
 import Configuracion from "./components/configuracion/Configuracion";
-import Solicitudes from "./components/Solicitudes";
+import MisSolicitudes from "./components/solicitudes/MisSolicitudes";
+import BandejaSolicitudes from "./components/solicitudes/BandejaSolicitudes";
+import Calendario from "./components/solicitudes/Calendario";
 import Reportes from "./components/Reportes";
 import { ROLES } from "./roles";
 
@@ -24,7 +26,9 @@ export const MENU = [
   { ruta: "/asistencia/personal", etiqueta: "Asistencia del personal", roles: CON_EQUIPO, componente: AsistenciaPersonal },
   { ruta: "/asistencia/ausencias", etiqueta: "Ausencias", roles: CON_EQUIPO, componente: Ausencias },
   { ruta: "/turnos", etiqueta: "Turnos", roles: CON_EQUIPO, componente: Turnos },
-  { ruta: "/solicitudes", etiqueta: "Solicitudes", roles: ROLES, componente: Solicitudes },
+  { ruta: "/solicitudes", etiqueta: "Mis solicitudes", roles: ROLES, componente: MisSolicitudes },
+  { ruta: "/solicitudes/bandeja", etiqueta: "Aprobación de solicitudes", roles: CON_EQUIPO, componente: BandejaSolicitudes },
+  { ruta: "/calendario", etiqueta: "Calendario", roles: ROLES, componente: Calendario },
   // Hasta la fase de reportes, el resumen es de toda la empresa: solo RRHH y Gerencia
   { ruta: "/reportes", etiqueta: "Reportes", roles: ["rrhh", "gerencia"], componente: Reportes },
   { ruta: "/configuracion", etiqueta: "Configuración", roles: ["rrhh", "gerencia"], componente: Configuracion }

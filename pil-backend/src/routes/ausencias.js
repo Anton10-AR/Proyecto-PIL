@@ -7,6 +7,7 @@ const { filtroVisibilidad } = require("../utils/visibilidad");
 const { hoyLocal, esFecha, esMes, rangoDelMes } = require("../utils/fechas");
 const { notificarTrabajador } = require("../utils/notificar");
 const { jornadaDelDia } = require("../utils/jornada");
+const { solicitudAprobadaEn, textoSolicitudAprobada } = require("../utils/solicitudes");
 
 const router = express.Router();
 
@@ -46,6 +47,10 @@ router.post("/", permitirRoles("rrhh"), (req, res) => {
   if (!trabajador) return res.status(404).json({ error: "Trabajador no encontrado" });
   if (db.prepare("SELECT id FROM asistencia WHERE id_trabajador = ? AND fecha = ?").get(id_trabajador, fecha)) {
     return res.status(409).json({ error: "El trabajador tiene una marcación de asistencia ese día" });
+  }
+  const solicitud = solicitudAprobadaEn(id_trabajador, fecha);
+  if (solicitud) {
+    return res.status(409).json({ error: `El trabajador tiene ${textoSolicitudAprobada(solicitud)} ese día` });
   }
   const { turno, feriado, laborable } = jornadaDelDia(id_trabajador, fecha);
   if (!laborable) {

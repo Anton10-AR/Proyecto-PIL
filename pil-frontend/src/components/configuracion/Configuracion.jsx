@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../contexto/useAuth";
 import { obtenerConfiguracion, guardarConfiguracion, listarFeriados, crearFeriado, eliminarFeriado } from "../../api/configuracion";
 import { fechaCorta, hoy } from "../../formato";
+import TiposPermiso from "./TiposPermiso";
 
 export default function Configuracion() {
   const { usuario } = useAuth();
@@ -105,6 +106,8 @@ export default function Configuracion() {
           </table>
         </div>
       </section>
+
+      <TiposPermiso esRRHH={esRRHH} setMensaje={setMensaje} setAviso={setAviso} />
     </div>
   );
 }

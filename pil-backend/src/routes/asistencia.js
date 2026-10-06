@@ -6,6 +6,7 @@ const { permitirRoles } = require("../middleware/auth");
 const { filtroVisibilidad } = require("../utils/visibilidad");
 const { hoyLocal, horaLocal, esFecha, esHora, esMes, rangoDelMes, calcularHoras, calcularRetraso } = require("../utils/fechas");
 const { jornadaDelDia, toleranciaMinutos } = require("../utils/jornada");
+const { solicitudAprobadaEn, textoSolicitudAprobada } = require("../utils/solicitudes");
 
 const router = express.Router();
 
@@ -77,7 +78,8 @@ router.get("/hoy", (req, res) => {
     laborable,
     tolerancia_minutos: toleranciaMinutos(),
     registro: registro || null,
-    ausencia: ausenciaDe(idTrabajador, fecha) || null
+    ausencia: ausenciaDe(idTrabajador, fecha) || null,
+    solicitud: solicitudAprobadaEn(idTrabajador, fecha)
   });
 });
 
@@ -93,6 +95,10 @@ router.post("/entrada", (req, res) => {
   }
   if (db.prepare("SELECT id FROM asistencia WHERE id_trabajador = ? AND fecha = ?").get(idTrabajador, fecha)) {
     return res.status(409).json({ error: "Ya registró su entrada hoy" });
+  }
+  const solicitud = solicitudAprobadaEn(idTrabajador, fecha);
+  if (solicitud) {
+    return res.status(409).json({ error: `Hoy tiene ${textoSolicitudAprobada(solicitud)}; no corresponde marcar asistencia` });
   }
 
   const campos = calcularCampos(idTrabajador, fecha, hora, null);
@@ -148,6 +154,10 @@ router.post("/", permitirRoles("rrhh"), (req, res) => {
   if (!trabajador) return res.status(404).json({ error: "Trabajador no encontrado" });
   if (ausenciaDe(id_trabajador, fecha)) {
     return res.status(409).json({ error: "Hay una ausencia registrada ese día; elimínela antes de registrar asistencia" });
+  }
+  const solicitud = solicitudAprobadaEn(id_trabajador, fecha);
+  if (solicitud) {
+    return res.status(409).json({ error: `El trabajador tiene ${textoSolicitudAprobada(solicitud)} ese día` });
   }
   if (db.prepare("SELECT id FROM asistencia WHERE id_trabajador = ? AND fecha = ?").get(id_trabajador, fecha)) {
     return res.status(409).json({ error: "Ya existe una marcación para ese trabajador en esa fecha; corríjala en lugar de crear otra" });
