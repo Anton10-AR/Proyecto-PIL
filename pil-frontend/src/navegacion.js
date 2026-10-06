@@ -1,5 +1,6 @@
 // Rutas de la app. Cada entrada indica qué roles pueden verla y en qué grupo del menú aparece;
 // las que tienen enMenu: false son subpáginas (no aparecen en el menú lateral).
+import { lazy } from "react";
 import ListaPersonal from "./components/personal/ListaPersonal";
 import FichaTrabajador from "./components/personal/FichaTrabajador";
 import FormularioTrabajador from "./components/personal/FormularioTrabajador";
@@ -25,7 +26,8 @@ import ResponderEncuesta from "./components/comunicacion/ResponderEncuesta";
 import FormularioEncuesta from "./components/comunicacion/FormularioEncuesta";
 import ResultadosEncuesta from "./components/comunicacion/ResultadosEncuesta";
 import Sugerencias from "./components/comunicacion/Sugerencias";
-import Reportes from "./components/Reportes";
+// Reportes usa recharts (pesado): se carga recién cuando se abre la página
+const Reportes = lazy(() => import("./components/reportes/Reportes"));
 import { ROLES } from "./roles";
 
 // Roles que consultan información de otros trabajadores (su equipo o toda la empresa)
@@ -52,7 +54,6 @@ export const MENU = [
   { ruta: "/evaluaciones/gestion", grupo: "Desarrollo", etiqueta: "Gestión de evaluaciones", roles: ["rrhh", "gerencia"], componente: GestionEvaluaciones },
   { ruta: "/evaluaciones/periodos/:id", roles: ["rrhh", "gerencia"], componente: DetallePeriodo, enMenu: false },
   { ruta: "/evaluaciones/:id", roles: ROLES, componente: DetalleEvaluacion, enMenu: false },
-  // Hasta la fase de reportes, el resumen es de toda la empresa: solo RRHH y Gerencia
   { ruta: "/comunicados", grupo: "Comunicación", etiqueta: "Comunicados", roles: ROLES, componente: Comunicados },
   { ruta: "/encuestas", grupo: "Comunicación", etiqueta: "Encuestas de clima", roles: ROLES, componente: Encuestas },
   { ruta: "/encuestas/nueva", roles: ["rrhh"], componente: FormularioEncuesta, enMenu: false },
@@ -60,7 +61,8 @@ export const MENU = [
   { ruta: "/encuestas/:id/editar", roles: ["rrhh"], componente: FormularioEncuesta, enMenu: false },
   { ruta: "/encuestas/:id/resultados", roles: ["rrhh", "gerencia"], componente: ResultadosEncuesta, enMenu: false },
   { ruta: "/sugerencias", grupo: "Comunicación", etiqueta: "Buzón de sugerencias", roles: ROLES, componente: Sugerencias },
-  { ruta: "/reportes", grupo: "Administración", etiqueta: "Reportes", roles: ["rrhh", "gerencia"], componente: Reportes },
+  // Cada rol ve sus indicadores con su alcance (empresa, equipo o propios)
+  { ruta: "/reportes", grupo: "Administración", etiqueta: "Reportes e indicadores", roles: ROLES, componente: Reportes },
   { ruta: "/configuracion", grupo: "Administración", etiqueta: "Configuración", roles: ["rrhh", "gerencia"], componente: Configuracion }
 ];
 

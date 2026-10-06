@@ -65,6 +65,21 @@ export async function abrirArchivo(ruta) {
   }
 }
 
+// Descarga un archivo protegido y lo guarda con el nombre que indique el servidor
+export async function descargarArchivo(ruta, nombrePorDefecto = "descarga") {
+  const res = await enviar(ruta);
+  const disposicion = res.headers.get("Content-Disposition") || "";
+  const nombre = disposicion.match(/filename="?([^"]+)"?/)?.[1] || nombrePorDefecto;
+  const url = URL.createObjectURL(await res.blob());
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombre;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 // Arma "?a=1&b=2" omitiendo los valores vacíos
 export function consulta(parametros = {}) {
   const params = new URLSearchParams();

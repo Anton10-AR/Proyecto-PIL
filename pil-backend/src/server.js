@@ -20,13 +20,16 @@ const evaluacionesRouter = require("./routes/evaluaciones");
 const encuestasRouter = require("./routes/encuestas");
 const sugerenciasRouter = require("./routes/sugerencias");
 const comunicadosRouter = require("./routes/comunicados");
+const respaldosRouter = require("./routes/respaldos");
+const { programarRespaldoDiario } = require("./utils/respaldos");
 const solicitudesRouter = require("./routes/solicitudes");
 const reportesRouter = require("./routes/reportes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Content-Disposition expuesto para que el frontend lea el nombre de los archivos que descarga
+app.use(cors({ exposedHeaders: ["Content-Disposition"] }));
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -61,9 +64,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Error interno del servidor" });
 });
 app.use("/api/solicitudes", solicitudesRouter);
-// Hasta la fase de reportes, el resumen es de toda la empresa: solo RRHH y Gerencia
-app.use("/api/reportes", permitirRoles("rrhh", "gerencia"), reportesRouter);
+// Reportes: cada rol ve su alcance (empresa, equipo o propio); exportar es solo de RRHH y Gerencia
+app.use("/api/reportes", reportesRouter);
+app.use("/api/respaldos", permitirRoles("rrhh"), respaldosRouter);
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  // Copia automática diaria (se puede desactivar con RESPALDO_AUTOMATICO=0, útil en pruebas)
+  if (process.env.RESPALDO_AUTOMATICO !== "0") programarRespaldoDiario();
 });

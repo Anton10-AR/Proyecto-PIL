@@ -4,11 +4,13 @@ import { useAuth } from "../../contexto/useAuth";
 import { obtenerConfiguracion, guardarConfiguracion, listarFeriados, crearFeriado, eliminarFeriado } from "../../api/configuracion";
 import { fechaCorta, hoy } from "../../formato";
 import TiposPermiso from "./TiposPermiso";
+import Respaldos from "./Respaldos";
 
 export default function Configuracion() {
   const { usuario } = useAuth();
   const esRRHH = usuario.rol === "rrhh";
   const [tolerancia, setTolerancia] = useState("");
+  const [inicioRegistros, setInicioRegistros] = useState("");
   const [anio, setAnio] = useState(Number(hoy().slice(0, 4)));
   const [feriados, setFeriados] = useState([]);
   const [nuevo, setNuevo] = useState({ fecha: "", descripcion: "" });
@@ -16,7 +18,9 @@ export default function Configuracion() {
   const [aviso, setAviso] = useState("");
 
   useEffect(() => {
-    obtenerConfiguracion().then((c) => setTolerancia(c.tolerancia_minutos ?? "")).catch((err) => setMensaje(err.message));
+    obtenerConfiguracion()
+      .then((c) => { setTolerancia(c.tolerancia_minutos ?? ""); setInicioRegistros(c.inicio_registros ?? ""); })
+      .catch((err) => setMensaje(err.message));
   }, []);
 
   const cargarFeriados = useCallback(() => {
@@ -48,6 +52,18 @@ export default function Configuracion() {
         >
           <input type="number" min="0" max="120" value={tolerancia} onChange={(e) => setTolerancia(e.target.value)} disabled={!esRRHH} aria-label="Minutos de tolerancia" required />
           <span>minutos</span>
+          {esRRHH && <button type="submit">Guardar</button>}
+        </form>
+      </section>
+
+      <section>
+        <h3>Inicio de registros de asistencia</h3>
+        <p className="ayuda">Primer día en que se registró asistencia en el sistema. Los indicadores no cuentan como programados los días anteriores.</p>
+        <form
+          className="formulario"
+          onSubmit={(e) => { e.preventDefault(); ejecutar(guardarConfiguracion("inicio_registros", inicioRegistros), "Fecha de inicio de registros actualizada"); }}
+        >
+          <input type="date" value={inicioRegistros} onChange={(e) => setInicioRegistros(e.target.value)} disabled={!esRRHH} aria-label="Inicio de registros" required />
           {esRRHH && <button type="submit">Guardar</button>}
         </form>
       </section>
@@ -108,6 +124,8 @@ export default function Configuracion() {
       </section>
 
       <TiposPermiso esRRHH={esRRHH} setMensaje={setMensaje} setAviso={setAviso} />
+
+      {esRRHH && <Respaldos setMensaje={setMensaje} setAviso={setAviso} />}
     </div>
   );
 }

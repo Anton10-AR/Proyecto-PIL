@@ -1,4 +1,5 @@
 // Estructura de la app con sesión: cabecera, menú lateral según el rol y contenido
+import { Suspense } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../contexto/useAuth";
 import { menuAgrupado, MENU } from "../navegacion";
@@ -50,7 +51,9 @@ export default function Layout() {
       )}
 
       <main className={restringido ? "contenido contenido-completo" : "contenido"}>
-        <Outlet />
+        <Suspense fallback={<p className="cargando">Cargando...</p>}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

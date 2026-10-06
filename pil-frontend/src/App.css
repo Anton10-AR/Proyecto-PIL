@@ -1279,3 +1279,128 @@ fieldset.criterio legend {
   margin: 0 0 0.5rem;
   font-size: 1rem;
 }
+
+/* --- Reportes e indicadores --- */
+.barra-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.barra-filtros input, .barra-filtros select {
+  padding: 0.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.segmentado {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segmentado button {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-right: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  font-size: 0.85rem;
+}
+
+.segmentado button:last-child {
+  border-right: none;
+}
+
+.segmentado button.activo {
+  background: #2563eb;
+  color: white;
+}
+
+.tarjetas-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  margin-top: 1rem;
+}
+
+.tarjeta-indicador {
+  min-width: 0;
+}
+
+.tarjeta-detalle {
+  margin-top: 0.3rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+}
+
+.panel-grafico {
+  padding: 1rem 1.1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.panel-grafico h3 {
+  margin: 0 0 0.2rem;
+}
+
+.panel-grafico h4 {
+  margin: 1rem 0 0.3rem;
+  font-size: 0.9rem;
+}
+
+.panel-grafico .ayuda {
+  margin: 0;
+}
+
+.grilla-paneles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.grilla-paneles .panel-grafico {
+  margin-top: 0;
+}
+
+.tooltip-grafico {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  font-size: 0.8rem;
+}
+
+.tooltip-fila {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.tooltip-muestra {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.lista-exportar {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-exportar li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}

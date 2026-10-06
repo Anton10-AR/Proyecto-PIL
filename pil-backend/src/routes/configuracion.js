@@ -2,6 +2,7 @@
 const express = require("express");
 const db = require("../db/database");
 const { permitirRoles } = require("../middleware/auth");
+const { esFecha } = require("../utils/fechas");
 
 const router = express.Router();
 
@@ -10,7 +11,9 @@ const VALIDADORES = {
   tolerancia_minutos: (valor) => {
     const n = Number(valor);
     return Number.isInteger(n) && n >= 0 && n <= 120 ? null : "La tolerancia debe ser un número entero de 0 a 120 minutos";
-  }
+  },
+  // Primer día en que se registra asistencia en el sistema: los días anteriores no cuentan como programados
+  inicio_registros: (valor) => (esFecha(valor) ? null : "La fecha de inicio de registros debe tener formato YYYY-MM-DD")
 };
 
 function configuracionActual() {

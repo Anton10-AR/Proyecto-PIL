@@ -465,6 +465,8 @@ function crearEsquema(db) {
   // Valores de configuración por defecto (no pisa los que ya existan)
   const insertarConfig = db.prepare("INSERT OR IGNORE INTO configuracion (clave, valor) VALUES (?, ?)");
   insertarConfig.run("tolerancia_minutos", "10");
+  // Desde cuándo se registra asistencia en el sistema (los indicadores no cuentan días anteriores)
+  insertarConfig.run("inicio_registros", new Date().toLocaleDateString("sv-SE"));
 }
 
 module.exports = { TABLAS, crearEsquema };

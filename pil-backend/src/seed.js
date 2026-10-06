@@ -445,6 +445,8 @@ const insertarAusencia = db.prepare(`
 `);
 
 const tolerancia = toleranciaMinutos();
+// La asistencia de ejemplo empieza hace 13 días: ese es el inicio de registros del sistema
+db.prepare("UPDATE configuracion SET valor = ? WHERE clave = 'inicio_registros'").run(sumarDias(hoy, -13));
 // Variación determinista para que cada corrida del seed genere los mismos datos relativos
 const variacion = (id, dias, rango) => (id * 37 + dias * 17) % rango;
 const sumarMinutos = (hora, minutos) => {
