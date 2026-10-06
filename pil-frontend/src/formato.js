@@ -50,6 +50,20 @@ export const RESULTADOS_CAPACITACION = {
   no_asistio: { texto: "No asistió", clase: "insignia-inactivo" }
 };
 
+// Evaluación del desempeño
+export const ESCALA_EVALUACION = { 1: "Deficiente", 2: "Regular", 3: "Aceptable", 4: "Bueno", 5: "Excelente" };
+
+export const ESTADOS_ACCION = {
+  pendiente: { texto: "Pendiente", clase: "insignia-pendiente" },
+  en_progreso: { texto: "En progreso", clase: "insignia-justificada" },
+  completada: { texto: "Completada", clase: "insignia-activo" }
+};
+
+// Clase de insignia según la categoría del puntaje (la calcula el backend)
+export function claseCategoria(categoria) {
+  return { Sobresaliente: "insignia-activo", Bueno: "insignia-justificada", Aceptable: "insignia-pendiente" }[categoria] || "insignia-injustificada";
+}
+
 export const INSCRIPCION_CAPACITACION = {
   propuesto: { texto: "Propuesto", clase: "insignia-pendiente" },
   inscrito: { texto: "Inscrito", clase: "insignia-justificada" },

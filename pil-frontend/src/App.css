@@ -1022,3 +1022,180 @@ td .barra-acciones {
 .campo-ancho {
   flex: 1 1 260px;
 }
+
+/* --- Evaluación del desempeño --- */
+.resumen-evaluacion {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.insignia-grande {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.95rem;
+}
+
+.criterios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.criterio {
+  padding: 0.8rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.criterio-encabezado {
+  margin-bottom: 0.5rem;
+}
+
+.escala {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.escala-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.4rem 0.2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.escala-opcion input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.escala-opcion:focus-within {
+  outline: 2px solid #93c5fd;
+}
+
+.escala-opcion.seleccionada {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: white;
+}
+
+.escala-opcion.solo-lectura {
+  cursor: default;
+}
+
+.escala-opcion.solo-lectura:not(.seleccionada) {
+  color: #9ca3af;
+}
+
+.escala-valor {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.escala-texto {
+  font-size: 0.72rem;
+}
+
+.criterio-observacion, .area-texto {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.45rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.area-texto {
+  resize: vertical;
+  margin-bottom: 0.6rem;
+}
+
+.texto-largo {
+  white-space: pre-wrap;
+}
+
+.texto-ok {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.tabla-criterios input {
+  width: 100%;
+  padding: 0.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.tabla-criterios td:nth-child(3) {
+  width: 7rem;
+}
+
+.plantillas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.tarjeta-plantilla {
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.lista-criterios {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-criterios li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.9rem;
+}
+
+.barra-avance {
+  width: 140px;
+  margin-bottom: 0.2rem;
+}
+
+@media (max-width: 720px) {
+  .escala-texto { display: none; }
+}
+
+/* --- Menú lateral agrupado por módulo --- */
+.menu-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.6rem;
+}
+
+.menu-grupo-titulo {
+  padding: 0 0.75rem;
+  color: #6b7280;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.menu-lateral a {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 720px) {
+  .menu-grupo { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; margin-top: 0.3rem; }
+  .menu-grupo-titulo { flex-basis: 100%; }
+}

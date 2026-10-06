@@ -20,7 +20,13 @@ const TABLAS = [
   "solicitudes",
   "aprobaciones_solicitud",
   "capacitaciones",
-  "participantes_capacitacion"
+  "participantes_capacitacion",
+  "plantillas_evaluacion",
+  "criterios_evaluacion",
+  "periodos_evaluacion",
+  "evaluaciones",
+  "calificaciones",
+  "acciones_mejora"
 ];
 
 function crearEsquema(db) {
@@ -257,6 +263,90 @@ function crearEsquema(db) {
       FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id),
       FOREIGN KEY (id_registrado_por) REFERENCES usuarios(id),
       FOREIGN KEY (id_archivo_certificado) REFERENCES archivos(id)
+    );
+
+    -- Plantillas de evaluación (RRHH). Los pesos de sus criterios suman 100 (se valida en el backend).
+    -- Una plantilla ya usada en alguna evaluación no permite cambiar sus criterios.
+    CREATE TABLE IF NOT EXISTS plantillas_evaluacion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL UNIQUE,
+      descripcion TEXT,
+      activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1))
+    );
+
+    CREATE TABLE IF NOT EXISTS criterios_evaluacion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_plantilla INTEGER NOT NULL,
+      nombre TEXT NOT NULL,
+      descripcion TEXT,
+      peso INTEGER NOT NULL CHECK (peso BETWEEN 1 AND 100),
+      orden INTEGER NOT NULL DEFAULT 0,
+      UNIQUE (id_plantilla, nombre),
+      FOREIGN KEY (id_plantilla) REFERENCES plantillas_evaluacion(id)
+    );
+
+    -- Períodos de evaluación. Cerrado = ya no se editan sus evaluaciones.
+    -- id_plantilla es la plantilla sugerida al asignar; cada evaluación guarda la suya.
+    CREATE TABLE IF NOT EXISTS periodos_evaluacion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL UNIQUE,
+      id_plantilla INTEGER NOT NULL,
+      fecha_inicio TEXT NOT NULL,
+      fecha_fin TEXT NOT NULL,
+      estado TEXT NOT NULL DEFAULT 'abierto' CHECK (estado IN ('abierto', 'cerrado')),
+      id_creado_por INTEGER NOT NULL,
+      fecha_cierre TEXT,
+      CHECK (fecha_fin >= fecha_inicio),
+      FOREIGN KEY (id_plantilla) REFERENCES plantillas_evaluacion(id),
+      FOREIGN KEY (id_creado_por) REFERENCES usuarios(id)
+    );
+
+    -- Una evaluación por trabajador y período. id_evaluador es una cuenta (usuarios.id); queda en NULL
+    -- si el trabajador no tiene supervisor con cuenta y RRHH aún no asignó a nadie.
+    CREATE TABLE IF NOT EXISTS evaluaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_periodo INTEGER NOT NULL,
+      id_trabajador INTEGER NOT NULL,
+      id_plantilla INTEGER NOT NULL,
+      id_evaluador INTEGER,
+      estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'completada')),
+      puntaje_final REAL CHECK (puntaje_final IS NULL OR puntaje_final BETWEEN 1 AND 5),
+      retroalimentacion TEXT,
+      fecha_asignacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      fecha_completada TEXT,
+      fecha_lectura TEXT,
+      UNIQUE (id_periodo, id_trabajador),
+      CHECK (estado = 'pendiente' OR puntaje_final IS NOT NULL),
+      CHECK (fecha_lectura IS NULL OR estado = 'completada'),
+      FOREIGN KEY (id_periodo) REFERENCES periodos_evaluacion(id),
+      FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id),
+      FOREIGN KEY (id_plantilla) REFERENCES plantillas_evaluacion(id),
+      FOREIGN KEY (id_evaluador) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS calificaciones (
+      id_evaluacion INTEGER NOT NULL,
+      id_criterio INTEGER NOT NULL,
+      puntaje INTEGER NOT NULL CHECK (puntaje BETWEEN 1 AND 5),
+      observacion TEXT,
+      PRIMARY KEY (id_evaluacion, id_criterio),
+      FOREIGN KEY (id_evaluacion) REFERENCES evaluaciones(id),
+      FOREIGN KEY (id_criterio) REFERENCES criterios_evaluacion(id)
+    );
+
+    -- Plan de mejora: acciones con responsable, fecha límite y seguimiento; pueden vincularse a una capacitación
+    CREATE TABLE IF NOT EXISTS acciones_mejora (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_evaluacion INTEGER NOT NULL,
+      descripcion TEXT NOT NULL,
+      id_responsable INTEGER NOT NULL,
+      fecha_limite TEXT NOT NULL,
+      estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'en_progreso', 'completada')),
+      id_capacitacion INTEGER,
+      fecha_actualizacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY (id_evaluacion) REFERENCES evaluaciones(id),
+      FOREIGN KEY (id_responsable) REFERENCES trabajadores(id),
+      FOREIGN KEY (id_capacitacion) REFERENCES capacitaciones(id)
     );
   `);
 

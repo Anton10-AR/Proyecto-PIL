@@ -16,6 +16,7 @@ const configuracionRouter = require("./routes/configuracion");
 const tiposPermisoRouter = require("./routes/tiposPermiso");
 const { router: archivosRouter } = require("./routes/archivos");
 const capacitacionesRouter = require("./routes/capacitaciones");
+const evaluacionesRouter = require("./routes/evaluaciones");
 const solicitudesRouter = require("./routes/solicitudes");
 const reportesRouter = require("./routes/reportes");
 
@@ -45,6 +46,7 @@ app.use("/api/configuracion", configuracionRouter);
 app.use("/api/tipos-permiso", tiposPermisoRouter);
 app.use("/api/archivos", archivosRouter);
 app.use("/api/capacitaciones", capacitacionesRouter);
+app.use("/api/evaluaciones", evaluacionesRouter);
 
 // Errores no controlados: se registran en consola y se responde JSON (el frontend siempre espera JSON)
 app.use((err, req, res, next) => {

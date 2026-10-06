@@ -7,6 +7,7 @@ const { filtroVisibilidad, puedeVerTrabajador } = require("../utils/visibilidad"
 const { hashearClave } = require("../utils/claves");
 const { turnoVigente } = require("../utils/jornada");
 const { saldoVacaciones } = require("../utils/solicitudes");
+const { categoriaPuntaje } = require("../utils/evaluacion");
 const { hoyLocal } = require("../utils/fechas");
 
 const router = express.Router();
@@ -21,7 +22,7 @@ const CAMPOS = [
 const SELECT_TRABAJADOR = `
   SELECT t.*,
          s.nombre || ' ' || s.apellido AS nombre_supervisor,
-         u.usuario, u.rol, u.activo AS cuenta_activa
+         u.id AS id_usuario, u.usuario, u.rol, u.activo AS cuenta_activa
   FROM trabajadores t
   LEFT JOIN trabajadores s ON s.id = t.id_supervisor
   LEFT JOIN usuarios u ON u.id_trabajador = t.id
@@ -146,7 +147,19 @@ router.get("/:id", (req, res) => {
       FROM participantes_capacitacion p JOIN capacitaciones c ON c.id = p.id_capacitacion
       WHERE p.id_trabajador = ? AND p.estado_inscripcion <> 'rechazado'
       ORDER BY c.fecha_inicio DESC
-    `).all(trabajador.id)
+    `).all(trabajador.id),
+    // Solo evaluaciones completadas (las pendientes no se muestran ni al propio trabajador)
+    evaluaciones: db.prepare(`
+      SELECT e.id, e.puntaje_final, e.fecha_completada, e.fecha_lectura, pe.nombre AS periodo,
+             ev.nombre || ' ' || ev.apellido AS evaluador,
+             (SELECT COUNT(*) FROM acciones_mejora a WHERE a.id_evaluacion = e.id AND a.estado <> 'completada') AS acciones_abiertas
+      FROM evaluaciones e
+      JOIN periodos_evaluacion pe ON pe.id = e.id_periodo
+      LEFT JOIN usuarios u ON u.id = e.id_evaluador
+      LEFT JOIN trabajadores ev ON ev.id = u.id_trabajador
+      WHERE e.id_trabajador = ? AND e.estado = 'completada'
+      ORDER BY pe.fecha_inicio DESC
+    `).all(trabajador.id).map((e) => ({ ...e, categoria: categoriaPuntaje(e.puntaje_final) }))
   };
 
   res.json({

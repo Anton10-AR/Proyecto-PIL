@@ -9,6 +9,7 @@ const path = require("path");
 const { jornadaDelDia, toleranciaMinutos } = require("./utils/jornada");
 const { diasHabilesEntre, solicitudAprobadaEn } = require("./utils/solicitudes");
 const { calcularDerechoVacaciones } = require("./utils/vacaciones");
+const { calcularPuntaje } = require("./utils/evaluacion");
 const { CARPETA: CARPETA_ARCHIVOS } = require("./routes/archivos");
 
 // PDF mínimo válido de una página, usado como documento de respaldo de ejemplo
@@ -244,6 +245,101 @@ capacitaciones.forEach((c) => {
   c.participantes.forEach((p) => insertarParticipante.run(idCapacitacion, ...p));
 });
 
+console.log("Insertando plantillas, períodos y evaluaciones de desempeño...");
+const insertarPlantilla = db.prepare("INSERT INTO plantillas_evaluacion (nombre, descripcion) VALUES (?, ?)");
+const insertarCriterio = db.prepare(
+  "INSERT INTO criterios_evaluacion (id_plantilla, nombre, descripcion, peso, orden) VALUES (?, ?, ?, ?, ?)"
+);
+// [nombre, descripcion, [[criterio, descripcion, peso], ...]]
+const plantillas = [
+  ["Personal de planta", "Operarios, choferes y personal de producción", [
+    ["Puntualidad y asistencia", "Cumple su horario y turnos", 20],
+    ["Calidad del trabajo", "Cumple los estándares de producción", 30],
+    ["Seguridad e higiene", "Aplica BPM y usa el equipo de protección", 25],
+    ["Trabajo en equipo", "Colabora con compañeros y supervisores", 15],
+    ["Iniciativa", "Propone mejoras y resuelve problemas", 10]
+  ]],
+  ["Personal administrativo", "Personal de oficina, supervisión y jefaturas", [
+    ["Puntualidad y asistencia", "Cumple su horario", 15],
+    ["Calidad del trabajo", "Exactitud y prolijidad", 30],
+    ["Cumplimiento de plazos", "Entrega a tiempo lo comprometido", 25],
+    ["Trabajo en equipo", "Colaboración y relación con otras áreas", 15],
+    ["Comunicación", "Claridad al informar y coordinar", 15]
+  ]]
+];
+const criteriosPorPlantilla = {};
+plantillas.forEach(([nombre, descripcion, criterios]) => {
+  const idPlantilla = insertarPlantilla.run(nombre, descripcion).lastInsertRowid;
+  criteriosPorPlantilla[idPlantilla] = criterios.map(([c, d, peso], i) => ({
+    id: insertarCriterio.run(idPlantilla, c, d, peso, i).lastInsertRowid, peso
+  }));
+});
+const PLANTA = 1;
+const ADMINISTRATIVO = 2;
+
+const anioActual = hoy.slice(0, 4);
+const insertarPeriodo = db.prepare(`
+  INSERT INTO periodos_evaluacion (nombre, id_plantilla, fecha_inicio, fecha_fin, estado, id_creado_por, fecha_cierre)
+  VALUES (?, ?, ?, ?, ?, 7, ?)
+`);
+const periodoCerrado = insertarPeriodo.run(`${anioActual}-S1`, PLANTA, `${anioActual}-01-01`, `${anioActual}-06-30`, "cerrado", `${anioActual}-07-15 17:00:00`).lastInsertRowid;
+const periodoAbierto = insertarPeriodo.run(`${anioActual}-S2`, PLANTA, `${anioActual}-07-01`, `${anioActual}-12-31`, "abierto", null).lastInsertRowid;
+
+const insertarEvaluacion = db.prepare(`
+  INSERT INTO evaluaciones (id_periodo, id_trabajador, id_plantilla, id_evaluador, estado, puntaje_final, retroalimentacion,
+    fecha_asignacion, fecha_completada, fecha_lectura)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const insertarCalificacion = db.prepare(
+  "INSERT INTO calificaciones (id_evaluacion, id_criterio, puntaje, observacion) VALUES (?, ?, ?, ?)"
+);
+const insertarAccion = db.prepare(`
+  INSERT INTO acciones_mejora (id_evaluacion, descripcion, id_responsable, fecha_limite, estado, id_capacitacion) VALUES (?, ?, ?, ?, ?, ?)
+`);
+const idCapacitacionPorTitulo = (inicio) => db.prepare("SELECT id FROM capacitaciones WHERE titulo LIKE ?").get(`${inicio}%`).id;
+
+// Usuarios evaluadores: 1 Ana, 4 Luis, 7 Elena (RRHH), 8 Jorge (Gerencia)
+// puntajes: uno por criterio de la plantilla (1 a 5); null = evaluación pendiente
+const evaluaciones = [
+  { periodo: periodoCerrado, id: 2, plantilla: PLANTA, evaluador: 1, puntajes: [4, 4, 5, 4, 3], leida: true,
+    retro: "Buen desempeño general; cumple los procedimientos de BPM." },
+  { periodo: periodoCerrado, id: 3, plantilla: PLANTA, evaluador: 1, puntajes: [5, 4, 4, 5, 4], leida: true,
+    retro: "Muy comprometida con el equipo y con la calidad." },
+  { periodo: periodoCerrado, id: 5, plantilla: ADMINISTRATIVO, evaluador: 4, puntajes: [4, 3, 3, 4, 3], leida: true,
+    retro: "Debe reforzar el conocimiento de inocuidad para los análisis de calidad.",
+    acciones: [["Completar la capacitación de inocuidad alimentaria HACCP", 5, 40, "en_progreso", "Inocuidad"]] },
+  { periodo: periodoCerrado, id: 6, plantilla: PLANTA, evaluador: 7, puntajes: [2, 3, 3, 3, 2], leida: false,
+    retro: "Se registraron ausencias sin aviso; mejorar la puntualidad.",
+    acciones: [["Cumplir el horario de ingreso sin retrasos durante tres meses", 6, 60, "pendiente", null],
+      ["Asistir a la capacitación de manejo defensivo", 6, -2, "completada", "Manejo"]] },
+  { periodo: periodoAbierto, id: 2, plantilla: PLANTA, evaluador: 1, puntajes: null },
+  { periodo: periodoAbierto, id: 3, plantilla: PLANTA, evaluador: 1, puntajes: [5, 5, 4, 5, 4], leida: false,
+    retro: "Sigue siendo un referente para el equipo de producción." },
+  { periodo: periodoAbierto, id: 5, plantilla: ADMINISTRATIVO, evaluador: 4, puntajes: null },
+  { periodo: periodoAbierto, id: 6, plantilla: PLANTA, evaluador: null, puntajes: null },
+  { periodo: periodoAbierto, id: 1, plantilla: ADMINISTRATIVO, evaluador: 8, puntajes: null },
+  { periodo: periodoAbierto, id: 7, plantilla: ADMINISTRATIVO, evaluador: 8, puntajes: null }
+];
+
+evaluaciones.forEach((ev) => {
+  const criterios = criteriosPorPlantilla[ev.plantilla];
+  const completada = Boolean(ev.puntajes);
+  const puntaje = completada
+    ? calcularPuntaje(criterios, Object.fromEntries(criterios.map((c, i) => [c.id, ev.puntajes[i]])))
+    : null;
+  const cerrado = ev.periodo === periodoCerrado;
+  const idEvaluacion = insertarEvaluacion.run(
+    ev.periodo, ev.id, ev.plantilla, ev.evaluador, completada ? "completada" : "pendiente", puntaje, ev.retro || null,
+    cerrado ? `${anioActual}-06-01 09:00:00` : `${sumarDias(hoy, -10)} 09:00:00`,
+    completada ? (cerrado ? `${anioActual}-06-20 16:00:00` : `${sumarDias(hoy, -2)} 16:00:00`) : null,
+    ev.leida ? `${anioActual}-07-02 10:00:00` : null
+  ).lastInsertRowid;
+  if (completada) criterios.forEach((c, i) => insertarCalificacion.run(idEvaluacion, c.id, ev.puntajes[i], null));
+  (ev.acciones || []).forEach(([descripcion, responsable, dias, estado, capacitacion]) => {
+    insertarAccion.run(idEvaluacion, descripcion, responsable, sumarDias(hoy, dias), estado, capacitacion ? idCapacitacionPorTitulo(capacitacion) : null);
+  });
+});
+
 console.log("Insertando asistencia y ausencias de las últimas dos semanas...");
 const insertarAsistencia = db.prepare(`
   INSERT INTO asistencia (id_trabajador, fecha, hora_entrada, hora_salida, id_turno, minutos_retraso, horas_trabajadas)
@@ -310,3 +406,4 @@ console.log(`- ${turnos.length} turnos, ${feriados.length} feriados y ${asignaci
 console.log(`- ${totalAsistencia} marcaciones de asistencia y ${totalAusencias} ausencias (últimas dos semanas)`);
 console.log(`- ${tiposPermiso.length} tipos de permiso y ${solicitudes.length} solicitudes en distintos estados del flujo`);
 console.log(`- ${capacitaciones.length} capacitaciones (finalizadas, en curso, programadas y una cancelada)`);
+console.log(`- ${plantillas.length} plantillas de evaluación, 2 períodos (uno cerrado) y ${evaluaciones.length} evaluaciones`);

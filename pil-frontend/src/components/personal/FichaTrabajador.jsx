@@ -8,7 +8,7 @@ import {
   crearCuenta, actualizarCuenta, restablecerClave
 } from "../../api/trabajadores";
 import { NOMBRES_ROL, ROLES } from "../../roles";
-import { ESTADOS_SOLICITUD, RESULTADOS_CAPACITACION, fechaCorta, rangoFechas, textoRetraso, textoTipoSolicitud } from "../../formato";
+import { ESTADOS_SOLICITUD, RESULTADOS_CAPACITACION, claseCategoria, fechaCorta, rangoFechas, textoRetraso, textoTipoSolicitud } from "../../formato";
 
 function Dato({ etiqueta, valor }) {
   return (
@@ -200,6 +200,9 @@ export default function FichaTrabajador() {
           <button role="tab" aria-selected={pestana === "capacitaciones"} className={pestana === "capacitaciones" ? "activa" : ""} onClick={() => setPestana("capacitaciones")}>
             Capacitaciones ({historial.capacitaciones.length})
           </button>
+          <button role="tab" aria-selected={pestana === "evaluaciones"} className={pestana === "evaluaciones" ? "activa" : ""} onClick={() => setPestana("evaluaciones")}>
+            Evaluaciones ({historial.evaluaciones.length})
+          </button>
         </div>
 
         {pestana === "asistencia" && (
@@ -234,6 +237,28 @@ export default function FichaTrabajador() {
                   </tr>
                 ))}
                 {historial.ausencias.length === 0 && <tr><td colSpan={3} className="vacio">Sin ausencias.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {pestana === "evaluaciones" && (
+          <div className="tabla-contenedor">
+            <p className="ayuda">Solo se muestran evaluaciones completadas.</p>
+            <table>
+              <thead><tr><th>Período</th><th>Evaluador</th><th>Puntaje</th><th>Lectura</th><th>Acciones de mejora abiertas</th><th></th></tr></thead>
+              <tbody>
+                {historial.evaluaciones.map((e) => (
+                  <tr key={e.id}>
+                    <td>{e.periodo}</td>
+                    <td>{e.evaluador || "—"}</td>
+                    <td><span className={`insignia ${claseCategoria(e.categoria)}`}>{e.puntaje_final}</span></td>
+                    <td>{e.fecha_lectura ? "Leída" : "Sin leer"}</td>
+                    <td>{e.acciones_abiertas}</td>
+                    <td><Link to={`/evaluaciones/${e.id}`}>Ver</Link></td>
+                  </tr>
+                ))}
+                {historial.evaluaciones.length === 0 && <tr><td colSpan={6} className="vacio">Sin evaluaciones completadas.</td></tr>}
               </tbody>
             </table>
           </div>
