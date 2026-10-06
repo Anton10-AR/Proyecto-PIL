@@ -1,9 +1,13 @@
 // Estructura de la app con sesión: cabecera, menú lateral según el rol y contenido
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../contexto/useAuth";
-import { menuDelRol } from "../navegacion";
+import { menuDelRol, MENU } from "../navegacion";
 import { NOMBRES_ROL } from "../roles";
 import Campana from "./Campana";
+
+function tieneSubrutasEnMenu(ruta) {
+  return MENU.some((item) => item.enMenu !== false && item.ruta.startsWith(`${ruta}/`));
+}
 
 export default function Layout() {
   const { usuario, cerrarSesion } = useAuth();
@@ -33,7 +37,8 @@ export default function Layout() {
         <nav className="menu-lateral">
           <NavLink to="/" end>Inicio</NavLink>
           {menuDelRol(usuario.rol).map((item) => (
-            <NavLink key={item.ruta} to={item.ruta}>{item.etiqueta}</NavLink>
+            // "end" solo donde otra entrada del menú cuelga de esta ruta (ej. /asistencia y /asistencia/personal)
+            <NavLink key={item.ruta} to={item.ruta} end={tieneSubrutasEnMenu(item.ruta)}>{item.etiqueta}</NavLink>
           ))}
           <NavLink to="/cambiar-clave">Cambiar contraseña</NavLink>
         </nav>

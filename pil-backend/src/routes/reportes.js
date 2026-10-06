@@ -2,15 +2,16 @@
 // datos de trabajadores, asistencia y solicitudes para indicadores de gestión.
 const express = require("express");
 const db = require("../db/database");
+const { hoyLocal } = require("../utils/fechas");
 
 const router = express.Router();
 
 function mesActual() {
-  return new Date().toISOString().slice(0, 7); // YYYY-MM
+  return hoyLocal().slice(0, 7); // YYYY-MM
 }
 
 function fechaHoy() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return hoyLocal(); // YYYY-MM-DD en hora local
 }
 
 // GET /api/reportes/resumen
@@ -29,7 +30,7 @@ router.get("/resumen", (req, res) => {
   const ausentesHoy = Math.max(totalActivos - asistenciasHoy, 0);
 
   const retrasosMes = db.prepare(
-    "SELECT COUNT(*) AS total FROM asistencia WHERE retraso = 1 AND fecha LIKE ?"
+    "SELECT COUNT(*) AS total FROM asistencia WHERE minutos_retraso > 0 AND fecha LIKE ?"
   ).get(`${mes}%`).total;
 
   const promedioHorasMes = db.prepare(

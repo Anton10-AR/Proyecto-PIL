@@ -9,6 +9,10 @@ const authRouter = require("./routes/auth");
 const notificacionesRouter = require("./routes/notificaciones");
 const trabajadoresRouter = require("./routes/trabajadores");
 const asistenciaRouter = require("./routes/asistencia");
+const ausenciasRouter = require("./routes/ausencias");
+const turnosRouter = require("./routes/turnos");
+const feriadosRouter = require("./routes/feriados");
+const configuracionRouter = require("./routes/configuracion");
 const solicitudesRouter = require("./routes/solicitudes");
 const reportesRouter = require("./routes/reportes");
 
@@ -31,6 +35,10 @@ app.use("/api", autenticar);
 app.use("/api/notificaciones", notificacionesRouter);
 app.use("/api/trabajadores", trabajadoresRouter);
 app.use("/api/asistencia", asistenciaRouter);
+app.use("/api/ausencias", ausenciasRouter);
+app.use("/api/turnos", turnosRouter);
+app.use("/api/feriados", feriadosRouter);
+app.use("/api/configuracion", configuracionRouter);
 app.use("/api/solicitudes", solicitudesRouter);
 // Hasta la fase de reportes, el resumen es de toda la empresa: solo RRHH y Gerencia
 app.use("/api/reportes", permitirRoles("rrhh", "gerencia"), reportesRouter);

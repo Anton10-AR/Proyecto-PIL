@@ -595,3 +595,130 @@ td a {
 .barra-acciones a.boton-primario {
   color: white;
 }
+
+/* --- Asistencia --- */
+.tarjeta-hoy {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 1.25rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.tarjeta-hoy p {
+  margin: 0.4rem 0 0;
+}
+
+.tarjeta-hoy-fecha {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-transform: capitalize;
+}
+
+.tarjeta-hoy-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.tarjeta-hoy-estado .aviso, .tarjeta-hoy-estado .exito {
+  margin: 0;
+}
+
+.boton-grande {
+  padding: 0.75rem 1.75rem;
+  font-size: 1rem;
+}
+
+.datos-compactos {
+  grid-template-columns: repeat(3, auto);
+  gap: 0.5rem 1.5rem;
+}
+
+.texto-alerta {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.texto-peligro {
+  color: #b91c1c !important;
+}
+
+.fila-ausencia td {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.fila-edicion td, .fila-detalle td {
+  background: #f9fafb;
+}
+
+.fila-edicion input, .fila-edicion select {
+  padding: 0.3rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  max-width: 100%;
+}
+
+.fila-edicion input[name="observacion"] {
+  width: 100%;
+}
+
+.boton-enlace {
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+  color: #1d4ed8 !important;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.casilla {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.casilla-formulario {
+  align-self: end;
+  padding-bottom: 0.5rem;
+}
+
+.etiqueta-campo {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.dias-semana {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
+.marca-correccion {
+  color: #6b7280;
+}
+
+.insignia-justificada { background: #e0f2fe; color: #075985; }
+.insignia-injustificada { background: #fee2e2; color: #991b1b; }
+
+.formulario span {
+  align-self: center;
+}
+
+.filtros input[type="checkbox"] {
+  flex: none;
+  min-width: 0;
+}
+
+td .barra-acciones {
+  flex-wrap: nowrap;
+}

@@ -3,6 +3,8 @@
 const db = require("./db/database");
 const { TABLAS, crearEsquema } = require("./db/esquema");
 const { hashearClave } = require("./utils/claves");
+const { hoyLocal, sumarDias, diaSemana, minutosDelDia, calcularHoras, calcularRetraso } = require("./utils/fechas");
+const { jornadaDelDia, toleranciaMinutos } = require("./utils/jornada");
 
 // Recrea el esquema desde cero: así los cambios de esquema de cada fase se aplican al correr el seed
 function recrearEsquema() {
@@ -10,12 +12,6 @@ function recrearEsquema() {
   [...TABLAS].reverse().forEach((tabla) => db.exec(`DROP TABLE IF EXISTS ${tabla};`));
   db.exec("PRAGMA foreign_keys = ON;");
   crearEsquema(db);
-}
-
-function fechaHace(diasAtras) {
-  const f = new Date();
-  f.setDate(f.getDate() - diasAtras);
-  return f.toISOString().slice(0, 10);
 }
 
 console.log("Recreando el esquema...");
@@ -71,37 +67,6 @@ db.prepare(`
   SELECT id, 'bienvenida', 'Bienvenido al nuevo Sistema de RR.HH. de PIL Andina', '/' FROM usuarios
 `).run();
 
-console.log("Insertando asistencia (últimos 5 días hábiles, trabajadores activos)...");
-const insertarAsistencia = db.prepare(`
-  INSERT INTO asistencia (id_trabajador, fecha, hora_entrada, hora_salida, retraso, horas_trabajadas)
-  VALUES (?, ?, ?, ?, ?, ?)
-`);
-
-// ids activos: 1 a 7 (8 quedó inactivo y no marca asistencia)
-const idsActivos = [1, 2, 3, 4, 5, 6, 7];
-const patronesEntrada = {
-  1: "08:15", 2: "08:45", 3: "08:20", 4: "08:10", 5: "08:35", 6: "07:55", 7: "08:25"
-};
-
-for (let dia = 4; dia >= 0; dia--) {
-  const fecha = fechaHace(dia);
-  idsActivos.forEach((id) => {
-    // Simula un par de ausencias e imprevistos para que el reporte tenga variedad
-    if (id === 6 && dia === 2) return; // Carlos faltó ese día
-    if (id === 5 && dia === 0) return; // Rosa aún no marcó entrada hoy
-
-    const horaEntrada = patronesEntrada[id];
-    const retraso = horaEntrada > "08:30" ? 1 : 0;
-
-    // El día de hoy (dia === 0) no siempre tiene hora de salida todavía
-    const marcarSalida = !(dia === 0 && (id === 2 || id === 4));
-    const horaSalida = marcarSalida ? "17:00" : null;
-    const horas = marcarSalida ? 8.5 : null;
-
-    insertarAsistencia.run(id, fecha, horaEntrada, horaSalida, retraso, horas);
-  });
-}
-
 console.log("Insertando solicitudes (variadas en tipo y estado)...");
 const insertarSolicitud = db.prepare(`
   INSERT INTO solicitudes (id_trabajador, tipo, fecha_inicio, fecha_fin, motivo, estado, id_aprobador)
@@ -119,11 +84,108 @@ const solicitudes = [
 
 solicitudes.forEach((s) => insertarSolicitud.run(...s));
 
+console.log("Insertando turnos, feriados y asignaciones...");
+const insertarTurno = db.prepare(
+  "INSERT INTO turnos (nombre, hora_inicio, hora_fin, dias_laborables) VALUES (?, ?, ?, ?)"
+);
+const turnos = [
+  ["Mañana", "06:00", "14:00", "1,2,3,4,5,6"],        // id 1: planta, lunes a sábado
+  ["Tarde", "14:00", "22:00", "1,2,3,4,5,6"],         // id 2: planta, lunes a sábado
+  ["Administrativo", "08:30", "17:30", "1,2,3,4,5"]   // id 3: oficinas, lunes a viernes
+];
+turnos.forEach((t) => insertarTurno.run(...t));
+
+// Feriados nacionales de Bolivia (2026 y comienzo de 2027), editables por RRHH
+const feriados = [
+  ["2026-01-01", "Año Nuevo"], ["2026-01-22", "Día del Estado Plurinacional"],
+  ["2026-02-16", "Carnaval"], ["2026-02-17", "Carnaval"], ["2026-04-03", "Viernes Santo"],
+  ["2026-05-01", "Día del Trabajo"], ["2026-06-04", "Corpus Christi"],
+  ["2026-06-21", "Año Nuevo Andino Amazónico"], ["2026-08-06", "Día de la Independencia"],
+  ["2026-11-02", "Día de Todos los Difuntos"], ["2026-12-25", "Navidad"],
+  ["2027-01-01", "Año Nuevo"], ["2027-01-22", "Día del Estado Plurinacional"]
+];
+const insertarFeriado = db.prepare("INSERT INTO feriados (fecha, descripcion) VALUES (?, ?)");
+feriados.forEach((f) => insertarFeriado.run(...f));
+
+// [id_trabajador, id_turno, fecha_desde, fecha_hasta]
+const asignaciones = [
+  [1, 3, "2026-01-01", null], [2, 1, "2026-01-01", "2026-06-30"], [2, 2, "2026-07-01", null],
+  [3, 1, "2026-01-01", null], [4, 3, "2026-01-01", null], [5, 3, "2026-01-01", null],
+  [6, 1, "2026-01-01", null], [7, 3, "2026-01-01", null], [9, 3, "2026-01-01", null],
+  [8, 1, "2026-01-01", "2026-03-31"]
+];
+const insertarAsignacion = db.prepare(`
+  INSERT INTO asignaciones_turno (id_trabajador, id_turno, fecha_desde, fecha_hasta, id_asignado_por)
+  VALUES (?, ?, ?, ?, 7)
+`);
+asignaciones.forEach((a) => insertarAsignacion.run(...a));
+
+console.log("Insertando asistencia y ausencias de las últimas dos semanas...");
+const insertarAsistencia = db.prepare(`
+  INSERT INTO asistencia (id_trabajador, fecha, hora_entrada, hora_salida, id_turno, minutos_retraso, horas_trabajadas)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+const insertarAusencia = db.prepare(`
+  INSERT INTO ausencias (id_trabajador, fecha, justificada, motivo, id_registrado_por) VALUES (?, ?, ?, ?, 7)
+`);
+
+const hoy = hoyLocal();
+const tolerancia = toleranciaMinutos();
+const enVacacionAprobada = (id, fecha) => solicitudes.some(
+  ([idT, , desde, hasta, , estado]) => idT === id && estado === "aprobado" && desde <= fecha && fecha <= hasta
+);
+// Variación determinista para que cada corrida del seed genere los mismos datos relativos
+const variacion = (id, dias, rango) => (id * 37 + dias * 17) % rango;
+const sumarMinutos = (hora, minutos) => {
+  const total = minutosDelDia(hora) + minutos;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
+
+let totalAsistencia = 0;
+let totalAusencias = 0;
+for (let dias = 13; dias >= 0; dias--) {
+  const fecha = sumarDias(hoy, -dias);
+  [1, 2, 3, 4, 5, 6, 7, 9].forEach((id) => {
+    const { turno, laborable } = jornadaDelDia(id, fecha);
+    if (!laborable || enVacacionAprobada(id, fecha)) return;
+
+    // Algunas ausencias registradas por RRHH para que los reportes tengan variedad
+    if (id === 6 && dias === 8) {
+      insertarAusencia.run(id, fecha, 0, "No se presentó ni avisó");
+      totalAusencias++;
+      return;
+    }
+    if (id === 5 && dias === 4) {
+      insertarAusencia.run(id, fecha, 1, "Reposo médico (presentó certificado)");
+      totalAusencias++;
+      return;
+    }
+    // Hoy, el turno de la tarde todavía no empezó y Rosa aún no marcó
+    if (dias === 0 && (turno.hora_inicio > "12:00" || id === 5)) return;
+
+    // Entrada entre 12 min antes y 17 min después del inicio: algunas caen fuera de la tolerancia
+    const entrada = sumarMinutos(turno.hora_inicio, variacion(id, dias, 30) - 12);
+    const salida = dias === 0 ? null : sumarMinutos(turno.hora_fin, variacion(id, dias, 25));
+    insertarAsistencia.run(
+      id, fecha, entrada, salida, turno.id,
+      calcularRetraso(entrada, turno.hora_inicio, tolerancia),
+      salida ? calcularHoras(entrada, salida) : null
+    );
+    totalAsistencia++;
+  });
+}
+
+// Una marcación fuera de turno: Carlos trabajó el domingo pasado
+const domingo = sumarDias(hoy, -((diaSemana(hoy) % 7) || 7));
+insertarAsistencia.run(6, domingo, "07:00", "11:00", null, null, calcularHoras("07:00", "11:00"));
+totalAsistencia++;
+
 console.log("Listo. Datos de ejemplo cargados:");
 console.log(`- ${trabajadores.length} trabajadores (1 inactivo)`);
 console.log(`- ${cuentas.length} cuentas de usuario. Contraseña inicial = CI del trabajador:`);
 cuentas.forEach(([idTrabajador, usuario, rol]) => {
   console.log(`    ${usuario.padEnd(11)} ${rol.padEnd(10)} clave: ${trabajadores[idTrabajador - 1][2]}`);
 });
-console.log("- 5 días de asistencia para los trabajadores activos, con retrasos y ausencias simuladas");
+console.log(`- ${turnos.length} turnos, ${feriados.length} feriados y ${asignaciones.length} asignaciones de turno`);
+console.log(`- ${totalAsistencia} marcaciones de asistencia y ${totalAusencias} ausencias (últimas dos semanas)`);
 console.log(`- ${solicitudes.length} solicitudes en distintos estados`);

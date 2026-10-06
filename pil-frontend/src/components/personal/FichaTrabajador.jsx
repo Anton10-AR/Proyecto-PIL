@@ -7,6 +7,7 @@ import {
   crearCuenta, actualizarCuenta, restablecerClave
 } from "../../api/trabajadores";
 import { NOMBRES_ROL, ROLES } from "../../roles";
+import { fechaCorta, textoRetraso } from "../../formato";
 
 function Dato({ etiqueta, valor }) {
   return (
@@ -144,6 +145,10 @@ export default function FichaTrabajador() {
           <Dato etiqueta="Fecha de ingreso" valor={trabajador.fecha_ingreso} />
           <Dato etiqueta="Tipo de contrato" valor={trabajador.tipo_contrato} />
           <Dato etiqueta="Supervisor" valor={trabajador.nombre_supervisor} />
+          <Dato
+            etiqueta="Turno vigente"
+            valor={trabajador.turno_vigente && `${trabajador.turno_vigente.nombre} (${trabajador.turno_vigente.hora_inicio}–${trabajador.turno_vigente.hora_fin})`}
+          />
           {trabajador.rol && <Dato etiqueta="Rol en el sistema" valor={NOMBRES_ROL[trabajador.rol]} />}
         </dl>
       </section>
@@ -179,6 +184,9 @@ export default function FichaTrabajador() {
           <button role="tab" aria-selected={pestana === "asistencia"} className={pestana === "asistencia" ? "activa" : ""} onClick={() => setPestana("asistencia")}>
             Asistencia ({historial.asistencia.length})
           </button>
+          <button role="tab" aria-selected={pestana === "ausencias"} className={pestana === "ausencias" ? "activa" : ""} onClick={() => setPestana("ausencias")}>
+            Ausencias ({historial.ausencias.length})
+          </button>
           <button role="tab" aria-selected={pestana === "solicitudes"} className={pestana === "solicitudes" ? "activa" : ""} onClick={() => setPestana("solicitudes")}>
             Solicitudes ({historial.solicitudes.length})
           </button>
@@ -188,15 +196,34 @@ export default function FichaTrabajador() {
           <div className="tabla-contenedor">
             <p className="ayuda">Últimos 30 registros.</p>
             <table>
-              <thead><tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Retraso</th><th>Horas</th></tr></thead>
+              <thead><tr><th>Fecha</th><th>Turno</th><th>Entrada</th><th>Salida</th><th>Retraso</th><th>Horas</th></tr></thead>
               <tbody>
                 {historial.asistencia.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.fecha}</td><td>{r.hora_entrada || "—"}</td><td>{r.hora_salida || "—"}</td>
-                    <td>{r.retraso ? "Sí" : "No"}</td><td>{r.horas_trabajadas ?? "—"}</td>
+                    <td>{fechaCorta(r.fecha)}</td><td>{r.turno || "—"}</td><td>{r.hora_entrada}</td><td>{r.hora_salida || "—"}</td>
+                    <td className={r.minutos_retraso > 0 ? "texto-alerta" : ""}>{textoRetraso(r.minutos_retraso)}</td>
+                    <td>{r.horas_trabajadas ?? "—"}</td>
                   </tr>
                 ))}
-                {historial.asistencia.length === 0 && <tr><td colSpan={5} className="vacio">Sin registros de asistencia.</td></tr>}
+                {historial.asistencia.length === 0 && <tr><td colSpan={6} className="vacio">Sin registros de asistencia.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {pestana === "ausencias" && (
+          <div className="tabla-contenedor">
+            <table>
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th></tr></thead>
+              <tbody>
+                {historial.ausencias.map((a) => (
+                  <tr key={a.id}>
+                    <td>{fechaCorta(a.fecha)}</td>
+                    <td>{a.justificada ? "Justificada" : "Injustificada"}</td>
+                    <td>{a.motivo || "—"}</td>
+                  </tr>
+                ))}
+                {historial.ausencias.length === 0 && <tr><td colSpan={3} className="vacio">Sin ausencias.</td></tr>}
               </tbody>
             </table>
           </div>
