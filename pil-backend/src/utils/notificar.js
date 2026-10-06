@@ -24,4 +24,20 @@ function notificarRol(rol, tipo, mensaje, enlace = null, excluirIdUsuario = null
     .forEach((u) => notificarUsuario(u.id, tipo, mensaje, enlace));
 }
 
-module.exports = { notificarUsuario, notificarTrabajador, notificarRol };
+// Cuentas activas de trabajadores activos de esas áreas (lista vacía = toda la empresa)
+function usuariosDeAreas(areas) {
+  const filtro = areas.length ? ` AND t.area IN (${areas.map(() => "?").join(",")})` : "";
+  return db.prepare(`
+    SELECT u.id FROM usuarios u JOIN trabajadores t ON t.id = u.id_trabajador
+    WHERE u.activo = 1 AND t.estado = 'activo'${filtro}
+  `).all(...areas).map((u) => u.id);
+}
+
+// Notifica a todos los destinatarios de un comunicado o encuesta
+function notificarAreas(areas, tipo, mensaje, enlace = null, excluirIdUsuario = null) {
+  usuariosDeAreas(areas)
+    .filter((id) => id !== excluirIdUsuario)
+    .forEach((id) => notificarUsuario(id, tipo, mensaje, enlace));
+}
+
+module.exports = { notificarUsuario, notificarTrabajador, notificarRol, usuariosDeAreas, notificarAreas };

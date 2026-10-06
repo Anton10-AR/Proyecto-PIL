@@ -19,6 +19,12 @@ import EvaluacionesAsignadas from "./components/evaluaciones/EvaluacionesAsignad
 import DetalleEvaluacion from "./components/evaluaciones/DetalleEvaluacion";
 import GestionEvaluaciones from "./components/evaluaciones/GestionEvaluaciones";
 import DetallePeriodo from "./components/evaluaciones/DetallePeriodo";
+import Comunicados from "./components/comunicacion/Comunicados";
+import Encuestas from "./components/comunicacion/Encuestas";
+import ResponderEncuesta from "./components/comunicacion/ResponderEncuesta";
+import FormularioEncuesta from "./components/comunicacion/FormularioEncuesta";
+import ResultadosEncuesta from "./components/comunicacion/ResultadosEncuesta";
+import Sugerencias from "./components/comunicacion/Sugerencias";
 import Reportes from "./components/Reportes";
 import { ROLES } from "./roles";
 
@@ -47,6 +53,13 @@ export const MENU = [
   { ruta: "/evaluaciones/periodos/:id", roles: ["rrhh", "gerencia"], componente: DetallePeriodo, enMenu: false },
   { ruta: "/evaluaciones/:id", roles: ROLES, componente: DetalleEvaluacion, enMenu: false },
   // Hasta la fase de reportes, el resumen es de toda la empresa: solo RRHH y Gerencia
+  { ruta: "/comunicados", grupo: "Comunicación", etiqueta: "Comunicados", roles: ROLES, componente: Comunicados },
+  { ruta: "/encuestas", grupo: "Comunicación", etiqueta: "Encuestas de clima", roles: ROLES, componente: Encuestas },
+  { ruta: "/encuestas/nueva", roles: ["rrhh"], componente: FormularioEncuesta, enMenu: false },
+  { ruta: "/encuestas/:id", roles: ROLES, componente: ResponderEncuesta, enMenu: false },
+  { ruta: "/encuestas/:id/editar", roles: ["rrhh"], componente: FormularioEncuesta, enMenu: false },
+  { ruta: "/encuestas/:id/resultados", roles: ["rrhh", "gerencia"], componente: ResultadosEncuesta, enMenu: false },
+  { ruta: "/sugerencias", grupo: "Comunicación", etiqueta: "Buzón de sugerencias", roles: ROLES, componente: Sugerencias },
   { ruta: "/reportes", grupo: "Administración", etiqueta: "Reportes", roles: ["rrhh", "gerencia"], componente: Reportes },
   { ruta: "/configuracion", grupo: "Administración", etiqueta: "Configuración", roles: ["rrhh", "gerencia"], componente: Configuracion }
 ];

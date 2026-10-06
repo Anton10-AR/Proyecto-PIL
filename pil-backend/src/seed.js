@@ -5,6 +5,7 @@ const { TABLAS, crearEsquema } = require("./db/esquema");
 const { hashearClave } = require("./utils/claves");
 const { hoyLocal, sumarDias, diaSemana, minutosDelDia, calcularHoras, calcularRetraso } = require("./utils/fechas");
 const fs = require("fs");
+const crypto = require("node:crypto");
 const path = require("path");
 const { jornadaDelDia, toleranciaMinutos } = require("./utils/jornada");
 const { diasHabilesEntre, solicitudAprobadaEn } = require("./utils/solicitudes");
@@ -340,6 +341,100 @@ evaluaciones.forEach((ev) => {
   });
 });
 
+console.log("Insertando comunicados, encuestas y sugerencias...");
+const insertarComunicado = db.prepare(`
+  INSERT INTO comunicados (titulo, contenido, importante, id_autor, fecha_publicacion) VALUES (?, ?, ?, ?, ?)
+`);
+const insertarComunicadoArea = db.prepare("INSERT INTO comunicado_areas (id_comunicado, area) VALUES (?, ?)");
+// [titulo, contenido, importante, id_usuario_autor, días atrás, áreas]
+const comunicados = [
+  ["Bienvenidos al nuevo sistema de RR.HH.", "Desde este mes, las solicitudes de permisos y vacaciones, la marcación de asistencia y las evaluaciones se gestionan en este sistema. Ante cualquier duda, consulte con Recursos Humanos.", 1, 8, 7, []],
+  ["Mantenimiento de la línea 2", "El sábado se realizará el mantenimiento preventivo de la línea 2 de envasado. El turno mañana de ese día se reasignará a la línea 1.", 0, 7, 3, ["Producción"]],
+  ["Campaña de vacunación contra la influenza", "La Caja de Salud realizará una campaña de vacunación en el consultorio de planta. Inscríbase con su supervisor.", 0, 7, 1, []]
+];
+comunicados.forEach(([titulo, contenido, importante, autor, dias, areas]) => {
+  const id = insertarComunicado.run(titulo, contenido, importante, autor, `${sumarDias(hoy, -dias)} 09:00:00`).lastInsertRowid;
+  areas.forEach((a) => insertarComunicadoArea.run(id, a));
+});
+
+const insertarEncuesta = db.prepare(`
+  INSERT INTO encuestas (titulo, descripcion, fecha_apertura, fecha_cierre, estado, id_creado_por) VALUES (?, ?, ?, ?, ?, 7)
+`);
+const insertarPregunta = db.prepare(
+  "INSERT INTO preguntas_encuesta (id_encuesta, texto, tipo, opciones, obligatoria, orden) VALUES (?, ?, ?, ?, ?, ?)"
+);
+const insertarRespondida = db.prepare("INSERT INTO encuesta_respondida (id_encuesta, id_trabajador) VALUES (?, ?)");
+const insertarEnvio = db.prepare("INSERT INTO envios_encuesta (id, id_encuesta, area) VALUES (?, ?, ?)");
+const insertarRespuesta = db.prepare("INSERT INTO respuestas_encuesta (id_envio, id_pregunta, valor_numero, valor_texto) VALUES (?, ?, ?, ?)");
+
+// preguntas: [texto, tipo, opciones, obligatoria]; respuestas: [id_trabajador, [valor por pregunta]]
+const encuestas = [
+  { titulo: "Clima laboral 2026", descripcion: "Queremos conocer su opinión sobre el ambiente de trabajo. Es anónima.",
+    desde: -5, hasta: 10, estado: "publicada", areas: [],
+    preguntas: [
+      ["Me siento valorado en mi trabajo", "escala", null, 1],
+      ["La comunicación con mi supervisor es buena", "escala", null, 1],
+      ["Cuento con los recursos necesarios para hacer bien mi trabajo", "escala", null, 1],
+      ["Recomendaría PIL Andina como lugar para trabajar", "escala", null, 1],
+      ["¿Qué aspecto debería priorizar la empresa?", "opcion", ["Capacitación", "Salarios y beneficios", "Ambiente de trabajo", "Comunicación interna"], 1],
+      ["¿Qué cambiaría para mejorar el clima laboral?", "texto", null, 0]
+    ],
+    respuestas: [
+      [1, [4, 4, 3, 5, "Capacitación", "Más reuniones de equipo para planificar la semana"]],
+      [2, [3, 4, 2, 4, "Salarios y beneficios", null]],
+      [3, [5, 5, 4, 5, "Ambiente de trabajo", "Mejorar la ventilación del área de envasado"]],
+      [4, [4, 3, 4, 4, "Comunicación interna", "Que los cambios de turno se avisen con más anticipación"]],
+      [5, [3, 3, 3, 4, "Capacitación", null]],
+      [6, [2, 3, 2, 3, "Salarios y beneficios", "Renovar los vehículos de reparto"]]
+    ] },
+  { titulo: "Evaluación de la capacitación en BPM", descripcion: "Opinión sobre la capacitación de Buenas Prácticas de Manufactura.",
+    desde: -38, hasta: -30, estado: "publicada", areas: ["Producción"],
+    preguntas: [
+      ["El contenido fue útil para mi trabajo", "escala", null, 1],
+      ["El instructor explicó con claridad", "escala", null, 1],
+      ["Comentarios", "texto", null, 0]
+    ],
+    respuestas: [
+      [1, [5, 4, "Muy buena, repetirla cada año"]], [2, [4, 4, null]], [3, [5, 5, "Faltó tiempo para la práctica"]]
+    ] },
+  { titulo: "Satisfacción con el servicio de comedor", descripcion: "Borrador en preparación por RRHH.",
+    desde: 15, hasta: 25, estado: "borrador", areas: [],
+    preguntas: [["La calidad de la comida es buena", "escala", null, 1], ["Sugerencias para el menú", "texto", null, 0]],
+    respuestas: [] }
+];
+encuestas.forEach((enc) => {
+  const idEncuesta = insertarEncuesta.run(enc.titulo, enc.descripcion, sumarDias(hoy, enc.desde), sumarDias(hoy, enc.hasta), enc.estado).lastInsertRowid;
+  enc.areas.forEach((a) => db.prepare("INSERT INTO encuesta_areas (id_encuesta, area) VALUES (?, ?)").run(idEncuesta, a));
+  const idsPreguntas = enc.preguntas.map(([texto, tipo, opciones, obligatoria], i) =>
+    ({ id: insertarPregunta.run(idEncuesta, texto, tipo, opciones ? JSON.stringify(opciones) : null, obligatoria, i).lastInsertRowid, tipo }));
+  enc.respuestas.forEach(([idTrabajador, valores]) => {
+    insertarRespondida.run(idEncuesta, idTrabajador);
+    const idEnvio = crypto.randomUUID();
+    insertarEnvio.run(idEnvio, idEncuesta, trabajadores[idTrabajador - 1][4]);
+    valores.forEach((valor, i) => {
+      if (valor === null) return;
+      const p = idsPreguntas[i];
+      insertarRespuesta.run(idEnvio, p.id, p.tipo === "escala" ? valor : null, p.tipo === "escala" ? null : valor);
+    });
+  });
+});
+
+const insertarSugerencia = db.prepare(`
+  INSERT INTO sugerencias (id_trabajador, codigo_seguimiento, categoria, texto, estado, respuesta, id_respondido_por, fecha, fecha_respuesta)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+// [id_trabajador (null = anónima), código, categoría, texto, estado, respuesta, días atrás]
+const sugerencias = [
+  [3, null, "condiciones", "Instalar un bebedero cerca de la línea 2 de envasado; el más cercano está lejos.", "atendida", "Se instalará un bebedero la próxima semana. ¡Gracias por la sugerencia!", 12],
+  [null, "DEMO2026", "seguridad", "La iluminación del depósito de insumos es insuficiente en el turno tarde.", "en_revision", "Mantenimiento está evaluando cambiar las luminarias.", 6],
+  [6, null, "procesos", "Rotar las rutas de reparto para equilibrar la carga entre choferes.", "recibida", null, 3],
+  [null, "SUGE7K4P", "bienestar", "Organizar más capacitaciones en Excel y herramientas de oficina.", "recibida", null, 1]
+];
+sugerencias.forEach(([trabajador, codigo, categoria, texto, estado, respuesta, dias]) => {
+  insertarSugerencia.run(trabajador, codigo, categoria, texto, estado, respuesta, respuesta ? 7 : null,
+    sumarDias(hoy, -dias), respuesta ? `${sumarDias(hoy, -dias + 2)} 10:00:00` : null);
+});
+
 console.log("Insertando asistencia y ausencias de las últimas dos semanas...");
 const insertarAsistencia = db.prepare(`
   INSERT INTO asistencia (id_trabajador, fecha, hora_entrada, hora_salida, id_turno, minutos_retraso, horas_trabajadas)
@@ -407,3 +502,4 @@ console.log(`- ${totalAsistencia} marcaciones de asistencia y ${totalAusencias} 
 console.log(`- ${tiposPermiso.length} tipos de permiso y ${solicitudes.length} solicitudes en distintos estados del flujo`);
 console.log(`- ${capacitaciones.length} capacitaciones (finalizadas, en curso, programadas y una cancelada)`);
 console.log(`- ${plantillas.length} plantillas de evaluación, 2 períodos (uno cerrado) y ${evaluaciones.length} evaluaciones`);
+console.log(`- ${comunicados.length} comunicados, ${encuestas.length} encuestas y ${sugerencias.length} sugerencias (códigos anónimos de ejemplo: DEMO2026, SUGE7K4P)`);

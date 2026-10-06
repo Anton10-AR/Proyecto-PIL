@@ -1199,3 +1199,83 @@ td .barra-acciones {
   .menu-grupo { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; margin-top: 0.3rem; }
   .menu-grupo-titulo { flex-basis: 100%; }
 }
+
+/* --- Comunicación: comunicados, sugerencias y encuestas --- */
+.lista-comunicados {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.comunicado, .tarjeta-sugerencia {
+  padding: 0.9rem 1.1rem;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #93c5fd;
+  border-radius: 8px;
+  background: white;
+}
+
+.comunicado h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.05rem;
+}
+
+.comunicado p, .tarjeta-sugerencia p {
+  margin: 0.5rem 0;
+}
+
+.comunicado-importante {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.comunicado-resumen p {
+  margin: 0.3rem 0 0;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.respuesta-rrhh {
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  background: #f0fdf4;
+  font-size: 0.9rem;
+}
+
+.aviso-codigo {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+fieldset.criterio {
+  margin: 0;
+}
+
+fieldset.criterio legend {
+  padding: 0 0.3rem;
+}
+
+.opciones-encuesta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lista-textos {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.7;
+}
+
+.fila-opcion input {
+  flex: 1;
+  max-width: 420px;
+  padding: 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.criterio h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}

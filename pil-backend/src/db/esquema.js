@@ -26,7 +26,16 @@ const TABLAS = [
   "periodos_evaluacion",
   "evaluaciones",
   "calificaciones",
-  "acciones_mejora"
+  "acciones_mejora",
+  "encuestas",
+  "encuesta_areas",
+  "preguntas_encuesta",
+  "encuesta_respondida",
+  "envios_encuesta",
+  "respuestas_encuesta",
+  "sugerencias",
+  "comunicados",
+  "comunicado_areas"
 ];
 
 function crearEsquema(db) {
@@ -347,6 +356,109 @@ function crearEsquema(db) {
       FOREIGN KEY (id_evaluacion) REFERENCES evaluaciones(id),
       FOREIGN KEY (id_responsable) REFERENCES trabajadores(id),
       FOREIGN KEY (id_capacitacion) REFERENCES capacitaciones(id)
+    );
+
+    -- Encuestas de clima (RRHH). borrador -> publicada; abierta/cerrada se deriva de las fechas.
+    CREATE TABLE IF NOT EXISTS encuestas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titulo TEXT NOT NULL,
+      descripcion TEXT,
+      fecha_apertura TEXT NOT NULL,
+      fecha_cierre TEXT NOT NULL,
+      estado TEXT NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador', 'publicada')),
+      id_creado_por INTEGER NOT NULL,
+      fecha_creacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      CHECK (fecha_cierre >= fecha_apertura),
+      FOREIGN KEY (id_creado_por) REFERENCES usuarios(id)
+    );
+
+    -- Áreas destinatarias; sin filas = toda la empresa
+    CREATE TABLE IF NOT EXISTS encuesta_areas (
+      id_encuesta INTEGER NOT NULL,
+      area TEXT NOT NULL,
+      PRIMARY KEY (id_encuesta, area),
+      FOREIGN KEY (id_encuesta) REFERENCES encuestas(id)
+    );
+
+    -- tipo: escala (1 a 5), opcion (única, opciones en JSON) o texto libre
+    CREATE TABLE IF NOT EXISTS preguntas_encuesta (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_encuesta INTEGER NOT NULL,
+      texto TEXT NOT NULL,
+      tipo TEXT NOT NULL CHECK (tipo IN ('escala', 'opcion', 'texto')),
+      opciones TEXT,
+      obligatoria INTEGER NOT NULL DEFAULT 1 CHECK (obligatoria IN (0, 1)),
+      orden INTEGER NOT NULL DEFAULT 0,
+      CHECK ((tipo = 'opcion') = (opciones IS NOT NULL)),
+      FOREIGN KEY (id_encuesta) REFERENCES encuestas(id)
+    );
+
+    -- ANONIMATO: quién respondió y qué respondió se guardan en tablas separadas, sin fechas ni
+    -- autoincrementales. Las tres tablas son WITHOUT ROWID (ordenadas por su clave): el orden de
+    -- inserción no queda registrado, así que no se puede emparejar un envío con quien respondió.
+    CREATE TABLE IF NOT EXISTS encuesta_respondida (
+      id_encuesta INTEGER NOT NULL,
+      id_trabajador INTEGER NOT NULL,
+      PRIMARY KEY (id_encuesta, id_trabajador),
+      FOREIGN KEY (id_encuesta) REFERENCES encuestas(id),
+      FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id)
+    ) WITHOUT ROWID;
+
+    -- Un envío = un cuestionario respondido. id es un UUID aleatorio; area es la del trabajador al
+    -- responder (los resultados por área solo se muestran con 3 o más envíos).
+    CREATE TABLE IF NOT EXISTS envios_encuesta (
+      id TEXT PRIMARY KEY,
+      id_encuesta INTEGER NOT NULL,
+      area TEXT,
+      FOREIGN KEY (id_encuesta) REFERENCES encuestas(id)
+    ) WITHOUT ROWID;
+
+    CREATE TABLE IF NOT EXISTS respuestas_encuesta (
+      id_envio TEXT NOT NULL,
+      id_pregunta INTEGER NOT NULL,
+      valor_numero INTEGER,
+      valor_texto TEXT,
+      PRIMARY KEY (id_envio, id_pregunta),
+      FOREIGN KEY (id_envio) REFERENCES envios_encuesta(id),
+      FOREIGN KEY (id_pregunta) REFERENCES preguntas_encuesta(id)
+    ) WITHOUT ROWID;
+
+    -- Buzón de sugerencias. Anónima: id_trabajador NULL y un código de seguimiento para que
+    -- quien la envió consulte el estado. Solo se guarda la fecha (sin hora) para no facilitar
+    -- identificar al autor.
+    CREATE TABLE IF NOT EXISTS sugerencias (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_trabajador INTEGER,
+      codigo_seguimiento TEXT UNIQUE,
+      categoria TEXT NOT NULL CHECK (categoria IN ('condiciones', 'procesos', 'seguridad', 'bienestar', 'comunicacion', 'otro')),
+      texto TEXT NOT NULL,
+      estado TEXT NOT NULL DEFAULT 'recibida' CHECK (estado IN ('recibida', 'en_revision', 'atendida')),
+      respuesta TEXT,
+      id_respondido_por INTEGER,
+      fecha TEXT NOT NULL DEFAULT (date('now', 'localtime')),
+      fecha_respuesta TEXT,
+      CHECK ((id_trabajador IS NULL) = (codigo_seguimiento IS NOT NULL)),
+      CHECK (estado <> 'atendida' OR respuesta IS NOT NULL),
+      FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id),
+      FOREIGN KEY (id_respondido_por) REFERENCES usuarios(id)
+    );
+
+    -- Comunicados internos (RRHH y Gerencia). Sin filas en comunicado_areas = toda la empresa.
+    CREATE TABLE IF NOT EXISTS comunicados (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titulo TEXT NOT NULL,
+      contenido TEXT NOT NULL,
+      importante INTEGER NOT NULL DEFAULT 0 CHECK (importante IN (0, 1)),
+      id_autor INTEGER NOT NULL,
+      fecha_publicacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY (id_autor) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS comunicado_areas (
+      id_comunicado INTEGER NOT NULL,
+      area TEXT NOT NULL,
+      PRIMARY KEY (id_comunicado, area),
+      FOREIGN KEY (id_comunicado) REFERENCES comunicados(id)
     );
   `);
 

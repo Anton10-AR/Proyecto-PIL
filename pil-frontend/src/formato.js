@@ -64,6 +64,29 @@ export function claseCategoria(categoria) {
   return { Sobresaliente: "insignia-activo", Bueno: "insignia-justificada", Aceptable: "insignia-pendiente" }[categoria] || "insignia-injustificada";
 }
 
+// Clima y comunicación
+export const ESTADOS_ENCUESTA = {
+  borrador: { texto: "Borrador", clase: "insignia-inactivo" },
+  proxima: { texto: "Próxima", clase: "insignia-justificada" },
+  abierta: { texto: "Abierta", clase: "insignia-activo" },
+  cerrada: { texto: "Cerrada", clase: "insignia-inactivo" }
+};
+
+export const CATEGORIAS_SUGERENCIA = {
+  condiciones: "Condiciones de trabajo",
+  procesos: "Procesos",
+  seguridad: "Seguridad",
+  bienestar: "Bienestar",
+  comunicacion: "Comunicación",
+  otro: "Otro"
+};
+
+export const ESTADOS_SUGERENCIA = {
+  recibida: { texto: "Recibida", clase: "insignia-pendiente" },
+  en_revision: { texto: "En revisión", clase: "insignia-justificada" },
+  atendida: { texto: "Atendida", clase: "insignia-activo" }
+};
+
 export const INSCRIPCION_CAPACITACION = {
   propuesto: { texto: "Propuesto", clase: "insignia-pendiente" },
   inscrito: { texto: "Inscrito", clase: "insignia-justificada" },
