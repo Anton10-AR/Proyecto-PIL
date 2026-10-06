@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { listarTrabajadores, crearSolicitud, listarSolicitudes, cambiarEstadoSolicitud } from "../api";
+import { listarTrabajadores } from "../api/trabajadores";
+import { crearSolicitud, listarSolicitudes, cambiarEstadoSolicitud } from "../api/solicitudes";
 
 export default function Solicitudes() {
   const [trabajadores, setTrabajadores] = useState([]);

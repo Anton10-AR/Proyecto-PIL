@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { obtenerResumenReportes } from "../api";
+import { obtenerResumenReportes } from "../api/reportes";
 
 function Tarjeta({ etiqueta, valor }) {
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listarTrabajadores, crearTrabajador, actualizarTrabajador, darDeBajaTrabajador } from "../api";
+import { listarTrabajadores, crearTrabajador, actualizarTrabajador, darDeBajaTrabajador } from "../api/trabajadores";
 
 const VACIO = {
   nombre: "", apellido: "", ci: "", cargo: "", area: "",

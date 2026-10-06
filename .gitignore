@@ -19,3 +19,7 @@ dist-ssr/
 .idea
 .DS_Store
 *.local
+
+# Archivos subidos y respaldos generados por el backend
+pil-backend/uploads/
+pil-backend/respaldos/

@@ -4,6 +4,9 @@ const cors = require("cors");
 
 require("./db/database"); // crea las tablas si no existen
 
+const { autenticar, permitirRoles } = require("./middleware/auth");
+const authRouter = require("./routes/auth");
+const notificacionesRouter = require("./routes/notificaciones");
 const trabajadoresRouter = require("./routes/trabajadores");
 const asistenciaRouter = require("./routes/asistencia");
 const solicitudesRouter = require("./routes/solicitudes");
@@ -15,14 +18,22 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/trabajadores", trabajadoresRouter);
-app.use("/api/asistencia", asistenciaRouter);
-app.use("/api/solicitudes", solicitudesRouter);
-app.use("/api/reportes", reportesRouter);
-
 app.get("/", (req, res) => {
   res.json({ mensaje: "API del prototipo de RRHH - PIL Andina funcionando" });
 });
+
+// Rutas públicas (login) y de sesión: cada una aplica autenticar() donde corresponde
+app.use("/api/auth", authRouter);
+
+// A partir de aquí todas las rutas exigen una sesión válida
+app.use("/api", autenticar);
+
+app.use("/api/notificaciones", notificacionesRouter);
+app.use("/api/trabajadores", trabajadoresRouter);
+app.use("/api/asistencia", asistenciaRouter);
+app.use("/api/solicitudes", solicitudesRouter);
+// Hasta la fase de reportes, el resumen es de toda la empresa: solo RRHH y Gerencia
+app.use("/api/reportes", permitirRoles("rrhh", "gerencia"), reportesRouter);
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);

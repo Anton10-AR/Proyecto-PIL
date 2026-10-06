@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { listarTrabajadores, registrarEntrada, registrarSalida, consultarAsistencia } from "../api";
+import { listarTrabajadores } from "../api/trabajadores";
+import { registrarEntrada, registrarSalida, consultarAsistencia } from "../api/asistencia";
 
 export default function Asistencia() {
   const [trabajadores, setTrabajadores] = useState([]);

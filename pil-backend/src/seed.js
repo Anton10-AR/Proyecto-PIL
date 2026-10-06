@@ -1,12 +1,15 @@
 // Script de carga de datos de ejemplo, útil para la demo del prototipo.
 // Uso: node src/seed.js
 const db = require("./db/database");
+const { TABLAS, crearEsquema } = require("./db/esquema");
+const { hashearClave } = require("./utils/claves");
 
-function limpiarTablas() {
-  db.exec("DELETE FROM solicitudes;");
-  db.exec("DELETE FROM asistencia;");
-  db.exec("DELETE FROM trabajadores;");
-  db.exec("DELETE FROM sqlite_sequence WHERE name IN ('trabajadores','asistencia','solicitudes');");
+// Recrea el esquema desde cero: así los cambios de esquema de cada fase se aplican al correr el seed
+function recrearEsquema() {
+  db.exec("PRAGMA foreign_keys = OFF;");
+  [...TABLAS].reverse().forEach((tabla) => db.exec(`DROP TABLE IF EXISTS ${tabla};`));
+  db.exec("PRAGMA foreign_keys = ON;");
+  crearEsquema(db);
 }
 
 function fechaHace(diasAtras) {
@@ -15,8 +18,8 @@ function fechaHace(diasAtras) {
   return f.toISOString().slice(0, 10);
 }
 
-console.log("Limpiando tablas...");
-limpiarTablas();
+console.log("Recreando el esquema...");
+recrearEsquema();
 
 console.log("Insertando trabajadores...");
 const insertarTrabajador = db.prepare(`
@@ -32,10 +35,41 @@ const trabajadores = [
   ["Rosa", "Choque", "2219876", "Analista de Calidad", "Calidad", "2021-09-05", "Indefinido", "70011115", "rchoque@pilandina.bo", 4, "activo"],
   ["Carlos", "Vargas", "7783456", "Chofer", "Logística", "2020-02-14", "Indefinido", "70011116", "cvargas@pilandina.bo", null, "activo"],
   ["Elena", "Fernandez", "1109988", "Asistente de RRHH", "Recursos Humanos", "2024-04-01", "Plazo fijo", "70011117", "efernandez@pilandina.bo", null, "activo"],
-  ["Pedro", "Quispe", "8890123", "Operario", "Producción", "2017-07-22", "Indefinido", "70011118", "pquispe@pilandina.bo", 1, "inactivo"]
+  ["Pedro", "Quispe", "8890123", "Operario", "Producción", "2017-07-22", "Indefinido", "70011118", "pquispe@pilandina.bo", 1, "inactivo"],
+  ["Jorge", "Salinas", "3456789", "Gerente General", "Gerencia", "2015-01-05", "Indefinido", "70011119", "jsalinas@pilandina.bo", null, "activo"]
 ];
 
 trabajadores.forEach((t) => insertarTrabajador.run(...t));
+
+console.log("Creando cuentas de usuario (una por rol como mínimo)...");
+const insertarUsuario = db.prepare(`
+  INSERT INTO usuarios (id_trabajador, usuario, hash_clave, sal, rol, debe_cambiar_clave)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+
+// [id_trabajador, usuario, rol, debe_cambiar_clave]. La contraseña inicial es el CI.
+// mlopez queda con cambio obligatorio para poder demostrar ese flujo.
+const cuentas = [
+  [1, "arojas", "supervisor", 0],
+  [2, "jperez", "trabajador", 0],
+  [3, "mlopez", "trabajador", 1],
+  [4, "lmamani", "supervisor", 0],
+  [5, "rchoque", "trabajador", 0],
+  [6, "cvargas", "trabajador", 0],
+  [7, "efernandez", "rrhh", 0],
+  [9, "jsalinas", "gerencia", 0]
+];
+
+cuentas.forEach(([idTrabajador, usuario, rol, debeCambiar]) => {
+  const ci = trabajadores[idTrabajador - 1][2];
+  const { hash, sal } = hashearClave(ci);
+  insertarUsuario.run(idTrabajador, usuario, hash, sal, rol, debeCambiar);
+});
+
+db.prepare(`
+  INSERT INTO notificaciones (id_usuario, tipo, mensaje, enlace)
+  SELECT id, 'bienvenida', 'Bienvenido al nuevo Sistema de RR.HH. de PIL Andina', '/' FROM usuarios
+`).run();
 
 console.log("Insertando asistencia (últimos 5 días hábiles, trabajadores activos)...");
 const insertarAsistencia = db.prepare(`
@@ -87,5 +121,9 @@ solicitudes.forEach((s) => insertarSolicitud.run(...s));
 
 console.log("Listo. Datos de ejemplo cargados:");
 console.log(`- ${trabajadores.length} trabajadores (1 inactivo)`);
+console.log(`- ${cuentas.length} cuentas de usuario. Contraseña inicial = CI del trabajador:`);
+cuentas.forEach(([idTrabajador, usuario, rol]) => {
+  console.log(`    ${usuario.padEnd(11)} ${rol.padEnd(10)} clave: ${trabajadores[idTrabajador - 1][2]}`);
+});
 console.log("- 5 días de asistencia para los trabajadores activos, con retrasos y ausencias simuladas");
 console.log(`- ${solicitudes.length} solicitudes en distintos estados`);
