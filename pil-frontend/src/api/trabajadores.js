@@ -1,8 +1,16 @@
-// --- Trabajadores (Personal) ---
+// --- Trabajadores (Personal) y sus cuentas de acceso ---
 import { peticion, consulta } from "./cliente";
 
-export function listarTrabajadores(buscar = "") {
-  return peticion(`/trabajadores${consulta({ buscar })}`);
+export function listarTrabajadores({ buscar, area, cargo, estado } = {}) {
+  return peticion(`/trabajadores${consulta({ buscar, area, cargo, estado })}`);
+}
+
+export function obtenerOpcionesPersonal() {
+  return peticion("/trabajadores/opciones");
+}
+
+export function obtenerTrabajador(id) {
+  return peticion(`/trabajadores/${id}`);
 }
 
 export function crearTrabajador(datos) {
@@ -15,4 +23,16 @@ export function actualizarTrabajador(id, datos) {
 
 export function darDeBajaTrabajador(id) {
   return peticion(`/trabajadores/${id}`, { metodo: "DELETE" });
+}
+
+export function crearCuenta(id, datos) {
+  return peticion(`/trabajadores/${id}/cuenta`, { metodo: "POST", cuerpo: datos });
+}
+
+export function actualizarCuenta(id, datos) {
+  return peticion(`/trabajadores/${id}/cuenta`, { metodo: "PUT", cuerpo: datos });
+}
+
+export function restablecerClave(id) {
+  return peticion(`/trabajadores/${id}/cuenta/restablecer-clave`, { metodo: "POST" });
 }

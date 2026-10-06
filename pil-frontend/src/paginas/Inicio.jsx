@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useAuth } from "../contexto/useAuth";
-import { menuDelRol, NOMBRES_ROL } from "../navegacion";
+import { menuDelRol } from "../navegacion";
+import { NOMBRES_ROL } from "../roles";
 
 export default function Inicio() {
   const { usuario } = useAuth();

@@ -1,7 +1,8 @@
 // Estructura de la app con sesión: cabecera, menú lateral según el rol y contenido
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../contexto/useAuth";
-import { menuDelRol, NOMBRES_ROL } from "../navegacion";
+import { menuDelRol } from "../navegacion";
+import { NOMBRES_ROL } from "../roles";
 import Campana from "./Campana";
 
 export default function Layout() {

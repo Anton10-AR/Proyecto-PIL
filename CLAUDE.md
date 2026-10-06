@@ -48,7 +48,7 @@ El sistema está en plena ampliación a 6 módulos y 4 roles (Trabajador, Superv
 - La baja de trabajador es lógica (`estado = 'inactivo'`), nunca se borra la fila — necesario porque `asistencia` y `solicitudes` tienen FK hacia `trabajadores`.
 
 ### Frontend: React 19 + Vite + React Router, sin gestor de estado global
-- Rutas con `react-router` (modo declarativo, `BrowserRouter` en `main.jsx`). `src/navegacion.js` define `MENU`: ruta, etiqueta, roles permitidos y componente. `App.jsx` genera las rutas a partir de `MENU` y `Layout` arma el menú lateral filtrado por rol. Para agregar una pantalla, se agrega una entrada a `MENU`.
+- Rutas con `react-router` (modo declarativo, `BrowserRouter` en `main.jsx`). `src/navegacion.js` define `MENU`: ruta, etiqueta, roles permitidos y componente. `App.jsx` genera las rutas a partir de `MENU` y `Layout` arma el menú lateral filtrado por rol. Para agregar una pantalla, se agrega una entrada a `MENU`; las subpáginas (ej. `/personal/:id`) llevan `enMenu: false`. Los componentes de un módulo con varias pantallas van en su propia carpeta (ej. `components/personal/`).
 - `RutaProtegida` redirige a `/login` sin sesión, fuerza `/cambiar-clave` si `debe_cambiar_clave`, y valida los roles.
 - Sesión: `contexto/AuthProvider.jsx` + `useAuth()`, con `useContext`, sin Redux. El token se guarda en `localStorage`.
 - `src/api/` tiene un archivo por módulo. Todos usan `peticion()` de `src/api/cliente.js`, que agrega el token, lanza un `Error` con el mensaje del backend si `res.ok` es falso y emite `EVENTO_SESION_EXPIRADA` ante un 401. Los componentes llaman estas funciones directamente y manejan su propio estado de carga y error con hooks locales.
