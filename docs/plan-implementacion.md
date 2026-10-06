@@ -105,3 +105,30 @@ Cada fase deja el sistema funcionando y termina en un commit en la rama `impleme
 | 6. Clima y comunicación (M5) | Encuestas anónimas, sugerencias, comunicados |
 | 7. Reportes y respaldos (M6, RNF06) | Indicadores, dashboard, exportación, respaldos |
 | 8. Cierre | Seed completo, actualización de `CLAUDE.md` y `README.md`, recorrido con cada rol |
+
+## 5. Estado final y decisiones tomadas durante la implementación
+
+Las 9 fases están completas en la rama `implementacion-v2` (un commit por fase).
+
+| Fase | Commit |
+|---|---|
+| 0. Base | `1125f6e` |
+| 1. Personal | `341f413` |
+| 2. Asistencia | `7788c0e` |
+| 3. Solicitudes | `1784bae` |
+| 4. Capacitación | `e6c112c` |
+| 5. Evaluación | `e2878aa` |
+| 6. Clima y comunicación | `558d7a8` |
+| 7. Reportes y respaldos | `2c81490` |
+| 8. Cierre | este commit |
+
+Decisiones no previstas en la sección 1 (conviene validarlas con el subgrupo de análisis):
+
+- **Esquema:** crece por fase en lugar de definirse completo en la Fase 0.
+- **Ausencias:** solo se registran en días laborables del turno, y una ausencia y una marcación del mismo día se excluyen mutuamente.
+- **Vacaciones (LGT):** años cumplidos 1–4 → 15 días, 5–9 → 20, 10 o más → 30. Las vacaciones se piden desde hoy en adelante; los permisos, hasta 30 días después de ocurridos.
+- **Supervisor sin cuenta activa:** si el supervisor directo no tiene una cuenta habilitada, la solicitud va a Gerencia para que no quede trabada.
+- **Capacitación:** el supervisor *propone* participantes y RRHH confirma o descarta.
+- **Evaluación:** cada evaluación guarda su propia plantilla (la del período es solo la sugerida). Categorías: 4,5 o más Sobresaliente; 3,5 Bueno; 2,5 Aceptable; menos, Necesita mejorar. Pueden evaluar los roles supervisor, RRHH y Gerencia.
+- **Sugerencias anónimas:** tienen un código de seguimiento para que el autor vea la respuesta. Solo RRHH responde.
+- **Indicadores:** la configuración `inicio_registros` evita contar días anteriores a la puesta en marcha del sistema. El día de hoy solo cuenta si ya tiene marcación o ausencia, y los días programados sin registro se informan aparte.

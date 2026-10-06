@@ -1,106 +1,79 @@
-# Prototipo RRHH - PIL Andina (Backend)
+# Sistema de RR.HH. PIL Andina — Backend
+
+API REST con **Node.js + Express 5** y **SQLite nativo** (`node:sqlite`, sin ORM ni compiladores).
 
 ## Requisitos
-- Node.js v22.5 o superior (usa el módulo nativo `node:sqlite`, incluido en Node —
-  no requiere instalar nada extra ni compiladores/Visual Studio)
 
-## Instalación y ejecución
+- Node.js **22.5 o superior**. Node puede mostrar el aviso `ExperimentalWarning: SQLite is an experimental feature`; es normal.
+
+## Comandos
 
 ```bash
 npm install
-node src/server.js
+npm start          # API en http://localhost:3000 (o PORT=xxxx npm start)
+npm run seed       # recrea el esquema y carga datos de ejemplo (BORRA lo existente)
+npm test           # pruebas de reglas de negocio con node --test
 ```
 
-Verás una advertencia de Node indicando que SQLite es experimental — es normal,
-no afecta el funcionamiento:
-`(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time`
+Variables de entorno opcionales:
 
-El servidor queda escuchando en `http://localhost:3000`. La base de datos SQLite
-(`pil_rrhh.db`) se crea automáticamente en la raíz del proyecto la primera vez
-que se ejecuta.
+| Variable | Uso |
+|----------|-----|
+| `PORT` | Puerto de la API (por defecto 3000) |
+| `RESPALDO_AUTOMATICO=0` | Desactiva el respaldo automático diario (útil en pruebas) |
 
-## Cargar datos de ejemplo (para la demo)
+## Datos y archivos
 
-```bash
-npm run seed
+| Ruta | Contenido |
+|------|-----------|
+| `pil_rrhh.db` | Base de datos SQLite (se crea sola al arrancar) |
+| `uploads/` | Archivos adjuntos: respaldos de permisos y certificados |
+| `respaldos/` | ZIP de respaldos manuales y automáticos |
+
+Las tres rutas están ignoradas por git. Después de cambiar el esquema (`src/db/esquema.js`) hay que correr `npm run seed`, porque `CREATE TABLE IF NOT EXISTS` no modifica tablas ya existentes.
+
+## Estructura
+
+```
+src/
+├── server.js            # monta las rutas; /api/auth es pública, el resto exige sesión
+├── seed.js              # datos de ejemplo (fechas relativas a hoy)
+├── db/
+│   ├── database.js      # conexión DatabaseSync
+│   └── esquema.js       # única fuente del esquema (crearEsquema, TABLAS)
+├── middleware/auth.js   # autenticar (token Bearer) y permitirRoles(...)
+├── routes/              # una ruta por módulo, con SQL inline
+└── utils/               # lógica compartida; las funciones puras tienen pruebas en test/
 ```
 
-Esto borra los datos existentes y carga: 8 trabajadores (uno inactivo, para
-probar la baja lógica), 5 días de asistencia con retrasos y ausencias
-simuladas, y 6 solicitudes en distintos estados (pendiente, aprobado,
-rechazado, cancelado). Ideal para que la vista de Reportes muestre números
-representativos sin tener que cargar todo a mano desde el frontend.
+## Seguridad
 
-Vuelve a correr `npm run seed` en cualquier momento para reiniciar los datos
-de ejemplo a este mismo punto de partida.
+- Contraseñas con `scrypt` y sal (`node:crypto`). Sesiones con token aleatorio; la base guarda solo su hash SHA-256 y vencen a las 8 h.
+- La contraseña inicial es el CI y se exige cambiarla en el primer ingreso.
+- La visibilidad por rol se aplica en el backend (`utils/visibilidad.js`): RRHH y Gerencia ven a todos, el supervisor a su equipo directo y el trabajador solo a sí mismo.
 
-## Endpoints disponibles (Etapa 1 - Módulo Personal)
+## Referencia de la API
 
-| Método | Ruta                     | Descripción                                  |
-|--------|--------------------------|-----------------------------------------------|
-| GET    | /api/trabajadores        | Listar todos (opcional: ?buscar=texto)        |
-| GET    | /api/trabajadores/:id    | Consultar un trabajador                       |
-| POST   | /api/trabajadores        | Registrar un trabajador                       |
-| PUT    | /api/trabajadores/:id    | Modificar un trabajador                       |
-| DELETE | /api/trabajadores/:id    | Baja lógica (estado = inactivo)               |
+Todas las rutas, salvo `POST /api/auth/login`, requieren la cabecera `Authorization: Bearer <token>`. Entre paréntesis se indican los roles restringidos; sin indicación, la ruta está abierta a todos con el alcance de su visibilidad.
 
-### Ejemplo de registro (POST)
+| Recurso | Rutas principales |
+|---------|-------------------|
+| `/api/auth` | `POST /login`, `POST /logout`, `GET /yo`, `PUT /clave` |
+| `/api/notificaciones` | `GET /`, `PUT /leidas`, `PUT /:id/leida` |
+| `/api/trabajadores` | `GET /`, `GET /opciones`, `GET /:id` (ficha con historial); `POST`, `PUT /:id`, `DELETE /:id`, `POST\|PUT /:id/cuenta`, `POST /:id/cuenta/restablecer-clave` (RRHH) |
+| `/api/turnos` | `GET /`, `GET /vigentes`, `GET /asignaciones`; `POST`, `PUT /:id`, `POST /asignaciones` (RRHH) |
+| `/api/feriados`, `/api/configuracion` | `GET`; altas, bajas y cambios (RRHH) |
+| `/api/asistencia` | `GET /`, `GET /hoy`, `POST /entrada`, `POST /salida`; `POST /` y `PUT /:id` (RRHH, con observación) |
+| `/api/ausencias` | `GET /`; `POST`, `PUT /:id`, `DELETE /:id` (RRHH) |
+| `/api/tipos-permiso` | `GET /`; `POST`, `PUT /:id` (RRHH) |
+| `/api/solicitudes` | `GET /?alcance=mias\|bandeja\|todas`, `GET /saldo`, `GET /calcular`, `GET /calendario`, `GET /:id`, `POST /`, `POST /:id/decision`, `POST /:id/cancelar` |
+| `/api/archivos` | `POST /` (multipart, campo `archivo`), `GET /:id` |
+| `/api/capacitaciones` | `GET /`, `GET /mias`, `GET /:id`; `POST`, `PUT /:id`, `/cancelar`, `/finalizar`, `/participantes/:idp/resultado` (RRHH); `POST\|DELETE /:id/participantes` (RRHH y supervisor) |
+| `/api/evaluaciones` | `/plantillas` y `/periodos` (RRHH; Gerencia consulta), `GET /?alcance=mias\|asignadas\|todas`, `GET\|PUT /:id`, `POST /:id/lectura`, `POST /:id/acciones`, `PUT\|DELETE /acciones/:id`, `GET /acciones/mias` |
+| `/api/encuestas` | `GET /`, `GET /:id`, `POST /:id/responder`; `POST`, `PUT`, `DELETE`, `/publicar` (RRHH); `GET /:id/resultados` (RRHH y Gerencia) |
+| `/api/sugerencias` | `POST /`, `GET /?alcance=mias\|todas`, `GET /seguimiento/:codigo`; `PUT /:id` (RRHH) |
+| `/api/comunicados` | `GET /`; `POST`, `DELETE /:id` (RRHH y Gerencia) |
+| `/api/reportes` | `GET /indicadores`; `GET /exportar/:tipo?formato=csv\|xlsx\|pdf` (RRHH y Gerencia) |
+| `/api/respaldos` | `GET /`, `POST /`, `GET /:nombre` (RRHH) |
 
-```bash
-curl -X POST http://localhost:3000/api/trabajadores \
-  -H "Content-Type: application/json" \
-  -d '{"nombre":"Juan","apellido":"Perez","ci":"1234567","cargo":"Operario","area":"Produccion","fecha_ingreso":"2024-01-15","tipo_contrato":"Indefinido"}'
-```
-
-## Endpoints disponibles (Etapa 2 - Asistencia y Solicitudes)
-
-| Método | Ruta                              | Descripción                                             |
-|--------|-----------------------------------|----------------------------------------------------------|
-| POST   | /api/asistencia                   | Registrar entrada del día (calcula retraso automático)   |
-| PUT    | /api/asistencia/:id/salida        | Registrar salida (calcula horas trabajadas)               |
-| GET    | /api/asistencia                   | Consultar (?trabajador=id&fecha=YYYY-MM-DD o &mes=YYYY-MM)|
-| POST   | /api/solicitudes                  | Crear solicitud de permiso o vacación                     |
-| GET    | /api/solicitudes                  | Listar (?trabajador=id&estado=pendiente)                  |
-| GET    | /api/solicitudes/:id              | Consultar una solicitud                                    |
-| PUT    | /api/solicitudes/:id/estado       | Aprobar/rechazar/cancelar (body: estado, id_aprobador)     |
-
-### Ejemplo: marcar entrada y salida
-
-```bash
-curl -X POST http://localhost:3000/api/asistencia \
-  -H "Content-Type: application/json" \
-  -d '{"id_trabajador":1,"fecha":"2026-09-12","hora_entrada":"08:45"}'
-
-curl -X PUT http://localhost:3000/api/asistencia/1/salida \
-  -H "Content-Type: application/json" \
-  -d '{"hora_salida":"17:30"}'
-```
-
-### Ejemplo: crear y aprobar una solicitud
-
-```bash
-curl -X POST http://localhost:3000/api/solicitudes \
-  -H "Content-Type: application/json" \
-  -d '{"id_trabajador":1,"tipo":"vacacion","fecha_inicio":"2026-10-01","fecha_fin":"2026-10-10","motivo":"Vacacion anual"}'
-
-curl -X PUT http://localhost:3000/api/solicitudes/1/estado \
-  -H "Content-Type: application/json" \
-  -d '{"estado":"aprobado","id_aprobador":1}'
-```
-
-## Próximas etapas
-- (Ninguna pendiente de las etapas planificadas — las 4 etapas están completas)
-
-## Endpoint de Reportes (Etapa 4)
-
-| Método | Ruta                          | Descripción                                                   |
-|--------|-------------------------------|-----------------------------------------------------------------|
-| GET    | /api/reportes/resumen         | Indicadores agregados (opcional: ?mes=YYYY-MM)                   |
-
-Devuelve: trabajadores activos, registrados/ausentes hoy, retrasos del mes,
-promedio de horas del mes, y solicitudes agrupadas por estado. No tiene tabla
-propia — se calcula a partir de trabajadores, asistencia y solicitudes.
-
-```bash
-curl http://localhost:3000/api/reportes/resumen
-```
+Las reglas de negocio de cada módulo se describen en el [`CLAUDE.md`](../CLAUDE.md) de la raíz y en [`docs/plan-implementacion.md`](../docs/plan-implementacion.md).

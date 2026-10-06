@@ -11,13 +11,13 @@ Este es un prototipo académico (proyecto PIL) de un sistema de RR.HH. para PIL 
 ### Backend (`pil-backend/`)
 ```bash
 npm install
-node src/server.js     # arranca la API en http://localhost:3000
+npm start               # arranca la API en http://localhost:3000 (RESPALDO_AUTOMATICO=0 desactiva el respaldo diario)
 npm run seed            # recrea el esquema desde cero y carga datos de ejemplo (imprime los usuarios de prueba)
 npm test                # node --test: pruebas de reglas de negocio en test/
 ```
 - Requiere Node.js v22.5+ (usa el módulo nativo `node:sqlite`, sin dependencias de compilación).
 - No hay linter configurado en el backend.
-- Usuarios de prueba (contraseña inicial = CI): `efernandez` (rrhh), `jsalinas` (gerencia), `arojas`/`lmamani` (supervisor), `jperez` (trabajador), `mlopez` (trabajador con cambio de clave obligatorio).
+- Usuarios de prueba (contraseña inicial = CI; la tabla completa está en el README de la raíz): `efernandez` (rrhh), `jsalinas` (gerencia), `arojas`/`lmamani` (supervisor), `jperez`/`rchoque`/`cvargas` (trabajador), `mlopez` (trabajador con cambio de clave obligatorio). El seed usa fechas relativas a hoy, así que los datos de ejemplo siguen siendo coherentes cualquier día que se corra.
 - La base de datos vive en `pil-backend/pil_rrhh.db` (SQLite, se crea sola al arrancar).
 
 ### Frontend (`pil-frontend/`)
@@ -29,11 +29,11 @@ npm run lint      # oxlint
 npm run preview   # sirve el build
 ```
 - El frontend asume que el backend ya está corriendo en `http://localhost:3000` (URL hardcodeada en `src/api/cliente.js`, sin variables de entorno).
-- No hay test runner configurado.
+- No hay test runner configurado en el frontend. Las pruebas de navegador usadas durante el desarrollo (Playwright con el Chrome instalado) no forman parte del repositorio.
 
 ## Arquitectura
 
-El sistema está en plena ampliación a 6 módulos y 4 roles (Trabajador, Supervisor, RRHH, Gerencia). El alcance acordado, la matriz de permisos y las fases están en `docs/plan-implementacion.md`: consultarlo antes de tocar cualquier módulo.
+El sistema implementa 6 módulos y 4 roles (Trabajador, Supervisor, RRHH, Gerencia) según el documento del subgrupo de análisis. El alcance acordado, la matriz de permisos y las decisiones de diseño están en `docs/plan-implementacion.md`: consultarlo antes de cambiar el comportamiento de un módulo.
 
 ### Backend: Express + node:sqlite, sin capa de modelos
 - `src/server.js` monta `/api/auth` (público) y luego aplica `autenticar` a todo `/api/*` antes de los demás routers.
@@ -78,13 +78,13 @@ El sistema está en plena ampliación a 6 módulos y 4 roles (Trabajador, Superv
   - `notificarAreas()` (`utils/notificar.js`) avisa a los destinatarios de comunicados y encuestas.
 - Archivos (`routes/archivos.js`, con `multer`): PDF o imágenes de hasta 5 MB, guardados en `pil-backend/uploads/` (ignorado por git). Solo los ve quien los subió o quien puede ver al trabajador dueño, según `REFERENCIAS`; cada módulo que adjunte archivos debe agregar ahí su consulta. Para asociar un archivo recién subido se valida con `errorArchivoParaAsociar()`: debe haberlo subido el mismo usuario y no estar en uso. El seed vacía esa carpeta.
 - `server.js` termina con un manejador de errores que responde JSON 500: el frontend siempre espera JSON.
-- La baja de trabajador es lógica (`estado = 'inactivo'`), nunca se borra la fila — necesario porque `asistencia` y `solicitudes` tienen FK hacia `trabajadores`.
+- La baja de trabajador es lógica (`estado = 'inactivo'`), nunca se borra la fila — casi todas las tablas tienen FK hacia `trabajadores`. Un trabajador inactivo no puede iniciar sesión (`autenticar` lo verifica).
 
 ### Frontend: React 19 + Vite + React Router, sin gestor de estado global
 - Rutas con `react-router` (modo declarativo, `BrowserRouter` en `main.jsx`). `src/navegacion.js` define `MENU`: ruta, etiqueta, roles permitidos y componente. `App.jsx` genera las rutas a partir de `MENU` y `Layout` arma el menú lateral filtrado por rol. Para agregar una pantalla, se agrega una entrada a `MENU`; las subpáginas (ej. `/personal/:id`) llevan `enMenu: false`. El campo `grupo` define el subtítulo del menú lateral (`menuAgrupado`). Las páginas pesadas (Reportes, que usa recharts) se cargan con `React.lazy`; `Layout` las envuelve en `Suspense`. Los gráficos usan los 3 primeros colores de la paleta categórica de referencia (validados) y siempre ofrecen una vista de tabla. Los componentes de un módulo con varias pantallas van en su propia carpeta (ej. `components/personal/`).
 - `RutaProtegida` redirige a `/login` sin sesión, fuerza `/cambiar-clave` si `debe_cambiar_clave`, y valida los roles.
 - Sesión: `contexto/AuthProvider.jsx` + `useAuth()`, con `useContext`, sin Redux. El token se guarda en `localStorage`.
-- `src/api/` tiene un archivo por módulo. Todos usan `peticion()` de `src/api/cliente.js`, que agrega el token, lanza un `Error` con el mensaje del backend si `res.ok` es falso y emite `EVENTO_SESION_EXPIRADA` ante un 401. Si `cuerpo` es un `FormData` se envía tal cual (para subir archivos). Los archivos protegidos se abren con `abrirArchivo()`, porque un `<a href>` no lleva el token. Los componentes llaman estas funciones directamente y manejan su propio estado de carga y error con hooks locales.
+- `src/api/` tiene un archivo por módulo. Todos usan `peticion()` de `src/api/cliente.js`, que agrega el token, lanza un `Error` con el mensaje del backend si `res.ok` es falso y emite `EVENTO_SESION_EXPIRADA` ante un 401. Si `cuerpo` es un `FormData` se envía tal cual (para subir archivos). Los archivos protegidos se abren con `abrirArchivo()` o se bajan con `descargarArchivo()`, porque un `<a href>` no lleva el token. Los componentes llaman estas funciones directamente y manejan su propio estado de carga y error con hooks locales.
 - `src/paginas/` contiene las pantallas propias del shell (Login, Inicio, CambiarClave); `src/components/` contiene los módulos y piezas comunes (Layout, Campana, RutaProtegida).
 
 ## Nomenclatura
