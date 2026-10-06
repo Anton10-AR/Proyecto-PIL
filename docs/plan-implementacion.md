@@ -122,7 +122,7 @@ Las 9 fases están completas en la rama `implementacion-v2` (un commit por fase)
 | 7. Reportes y respaldos | `2c81490` |
 | 8. Cierre | este commit |
 
-Decisiones no previstas en la sección 1 (conviene validarlas con el subgrupo de análisis):
+Decisiones no previstas en la sección 1 (conviene validarlas con el subgrupo de análisis). El detalle, con las preguntas para el subgrupo, está en [`decisiones-para-validar.md`](decisiones-para-validar.md):
 
 - **Esquema:** crece por fase en lugar de definirse completo en la Fase 0.
 - **Ausencias:** solo se registran en días laborables del turno, y una ausencia y una marcación del mismo día se excluyen mutuamente.
