@@ -6,6 +6,7 @@ const db = require("../db/database");
 const { filtroVisibilidad, puedeVerTrabajador } = require("../utils/visibilidad");
 const { hoyLocal, sumarDias, esFecha, esMes, rangoDelMes } = require("../utils/fechas");
 const { notificarTrabajador, notificarRol, notificarUsuario } = require("../utils/notificar");
+const { errorArchivoParaAsociar } = require("./archivos");
 const {
   ESTADOS_PENDIENTES, ESTADOS_ACTIVOS, ETAPA_DE_ESTADO,
   diasHabilesEntre, saldoVacaciones, describirSolicitud, solicitudSuperpuesta,
@@ -238,12 +239,9 @@ router.post("/", (req, res) => {
 
   let idArchivo = null;
   if (cuerpo.id_archivo_respaldo) {
-    const archivo = db.prepare("SELECT * FROM archivos WHERE id = ?").get(cuerpo.id_archivo_respaldo);
-    if (!archivo || archivo.id_subido_por !== req.usuario.id) return res.status(400).json({ error: "El archivo de respaldo no es válido" });
-    if (db.prepare("SELECT 1 FROM solicitudes WHERE id_archivo_respaldo = ?").get(archivo.id)) {
-      return res.status(400).json({ error: "Ese archivo ya está asociado a otra solicitud" });
-    }
-    idArchivo = archivo.id;
+    const errorArchivo = errorArchivoParaAsociar(cuerpo.id_archivo_respaldo, req.usuario);
+    if (errorArchivo) return res.status(400).json({ error: errorArchivo });
+    idArchivo = Number(cuerpo.id_archivo_respaldo);
   }
 
   const resultado = db.prepare(`

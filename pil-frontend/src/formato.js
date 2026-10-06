@@ -35,6 +35,27 @@ export const ESTADOS_SOLICITUD = {
 
 export const ETAPAS = { supervisor: "Supervisor", rrhh: "RRHH", gerencia: "Gerencia" };
 
+// Estado de una capacitación (estado_actual que calcula el backend)
+export const ESTADOS_CAPACITACION = {
+  programada: { texto: "Programada", clase: "insignia-pendiente" },
+  en_curso: { texto: "En curso", clase: "insignia-justificada" },
+  por_cerrar: { texto: "Por cerrar", clase: "insignia-pendiente" },
+  finalizada: { texto: "Finalizada", clase: "insignia-activo" },
+  cancelada: { texto: "Cancelada", clase: "insignia-inactivo" }
+};
+
+export const RESULTADOS_CAPACITACION = {
+  aprobado: { texto: "Aprobado", clase: "insignia-activo" },
+  reprobado: { texto: "Reprobado", clase: "insignia-injustificada" },
+  no_asistio: { texto: "No asistió", clase: "insignia-inactivo" }
+};
+
+export const INSCRIPCION_CAPACITACION = {
+  propuesto: { texto: "Propuesto", clase: "insignia-pendiente" },
+  inscrito: { texto: "Inscrito", clase: "insignia-justificada" },
+  rechazado: { texto: "Descartado", clase: "insignia-inactivo" }
+};
+
 // "Vacación" o "Permiso: Médico"
 export function textoTipoSolicitud(solicitud) {
   return solicitud.tipo === "vacacion" ? "Vacación" : `Permiso${solicitud.tipo_permiso ? `: ${solicitud.tipo_permiso}` : ""}`;

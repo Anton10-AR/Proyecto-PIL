@@ -18,7 +18,9 @@ const TABLAS = [
   "ausencias",
   "tipos_permiso",
   "solicitudes",
-  "aprobaciones_solicitud"
+  "aprobaciones_solicitud",
+  "capacitaciones",
+  "participantes_capacitacion"
 ];
 
 function crearEsquema(db) {
@@ -212,6 +214,49 @@ function crearEsquema(db) {
       UNIQUE (id_solicitud, etapa),
       FOREIGN KEY (id_solicitud) REFERENCES solicitudes(id),
       FOREIGN KEY (id_aprobador) REFERENCES usuarios(id)
+    );
+
+    -- Capacitaciones (registros independientes, sin catálogo de cursos). Estado guardado:
+    -- programada | finalizada | cancelada. "En curso" se deriva: programada y hoy entre las fechas.
+    CREATE TABLE IF NOT EXISTS capacitaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titulo TEXT NOT NULL,
+      descripcion TEXT,
+      instructor TEXT,
+      lugar TEXT,
+      fecha_inicio TEXT NOT NULL,
+      fecha_fin TEXT NOT NULL,
+      horas REAL NOT NULL CHECK (horas > 0),
+      cupo INTEGER CHECK (cupo IS NULL OR cupo > 0),
+      estado TEXT NOT NULL DEFAULT 'programada' CHECK (estado IN ('programada', 'finalizada', 'cancelada')),
+      id_creado_por INTEGER NOT NULL,
+      fecha_creacion TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      CHECK (fecha_fin >= fecha_inicio),
+      FOREIGN KEY (id_creado_por) REFERENCES usuarios(id)
+    );
+
+    -- Participantes: el supervisor propone (propuesto) y RRHH confirma (inscrito) o descarta (rechazado);
+    -- RRHH también inscribe directamente. El resultado solo se registra para inscritos, y el
+    -- certificado solo para quien aprobó.
+    CREATE TABLE IF NOT EXISTS participantes_capacitacion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_capacitacion INTEGER NOT NULL,
+      id_trabajador INTEGER NOT NULL,
+      estado_inscripcion TEXT NOT NULL CHECK (estado_inscripcion IN ('propuesto', 'inscrito', 'rechazado')),
+      id_registrado_por INTEGER NOT NULL,
+      fecha_registro TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      asistencia_pct INTEGER CHECK (asistencia_pct IS NULL OR asistencia_pct BETWEEN 0 AND 100),
+      nota REAL CHECK (nota IS NULL OR nota BETWEEN 0 AND 100),
+      resultado TEXT CHECK (resultado IS NULL OR resultado IN ('aprobado', 'reprobado', 'no_asistio')),
+      observacion TEXT,
+      id_archivo_certificado INTEGER,
+      UNIQUE (id_capacitacion, id_trabajador),
+      CHECK (resultado IS NULL OR estado_inscripcion = 'inscrito'),
+      CHECK (id_archivo_certificado IS NULL OR resultado = 'aprobado'),
+      FOREIGN KEY (id_capacitacion) REFERENCES capacitaciones(id),
+      FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id),
+      FOREIGN KEY (id_registrado_por) REFERENCES usuarios(id),
+      FOREIGN KEY (id_archivo_certificado) REFERENCES archivos(id)
     );
   `);
 

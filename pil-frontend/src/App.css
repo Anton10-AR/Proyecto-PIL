@@ -949,3 +949,76 @@ td .barra-acciones {
     width: auto;
   }
 }
+
+/* --- Capacitación --- */
+.etiqueta-mia {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.panel-agregar {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.panel-agregar input[aria-label="Filtrar"] {
+  padding: 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  min-width: 240px;
+}
+
+.lista-casillas {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0.5rem 0 0.8rem;
+  padding: 0;
+  list-style: none;
+  columns: 2 280px;
+}
+
+.lista-casillas li {
+  padding: 0.2rem 0;
+  break-inside: avoid;
+}
+
+.formulario-resultado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 1rem;
+  padding: 0.4rem 0;
+}
+
+.formulario-resultado > strong {
+  flex-basis: 100%;
+}
+
+.formulario-resultado label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.formulario-resultado input, .formulario-resultado select {
+  padding: 0.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.formulario-resultado input[type="number"] {
+  width: 7rem;
+}
+
+.campo-ancho {
+  flex: 1 1 260px;
+}

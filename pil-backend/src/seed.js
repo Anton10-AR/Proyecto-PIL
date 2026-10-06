@@ -197,6 +197,53 @@ solicitudes.forEach((s) => {
   });
 });
 
+console.log("Insertando capacitaciones y participantes...");
+const insertarCapacitacion = db.prepare(`
+  INSERT INTO capacitaciones (titulo, descripcion, instructor, lugar, fecha_inicio, fecha_fin, horas, cupo, estado, id_creado_por)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 7)
+`);
+const insertarParticipante = db.prepare(`
+  INSERT INTO participantes_capacitacion
+    (id_capacitacion, id_trabajador, estado_inscripcion, id_registrado_por, asistencia_pct, nota, resultado, id_archivo_certificado)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`);
+
+// Certificado de ejemplo para la capacitación de BPM aprobada por María
+const nombreCertificado = "certificado-bpm-ejemplo.pdf";
+fs.writeFileSync(path.join(CARPETA_ARCHIVOS, nombreCertificado), PDF_EJEMPLO);
+const idCertificado = db.prepare(`
+  INSERT INTO archivos (nombre_original, ruta, mime, tamano, id_subido_por) VALUES (?, ?, 'application/pdf', ?, 7)
+`).run("Certificado BPM - Maria Lopez.pdf", nombreCertificado, Buffer.byteLength(PDF_EJEMPLO)).lastInsertRowid;
+
+// desde/hasta en días relativos a hoy. participantes: [id_trabajador, estado, id_usuario_registro, asistencia, nota, resultado, certificado]
+const capacitaciones = [
+  { titulo: "Buenas Prácticas de Manufactura (BPM)", descripcion: "Higiene, inocuidad y control de procesos en planta",
+    instructor: "Ing. Carla Gutiérrez", lugar: "Sala de capacitación, Planta Sucre", desde: -40, hasta: -39, horas: 8, cupo: 20, estado: "finalizada",
+    participantes: [[3, "inscrito", 7, 100, 85, "aprobado", idCertificado], [2, "inscrito", 7, 90, 78, "aprobado", null],
+      [5, "inscrito", 7, 100, 52, "reprobado", null], [6, "inscrito", 7, 0, null, "no_asistio", null]] },
+  { titulo: "Seguridad industrial y uso de EPP", descripcion: "Equipos de protección personal y prevención de accidentes",
+    instructor: "Lic. Marco Torrez", lugar: "Planta Sucre", desde: -20, hasta: -20, horas: 4, cupo: null, estado: "finalizada",
+    participantes: [[2, "inscrito", 7, 100, 90, "aprobado", null], [3, "inscrito", 7, 100, 88, "aprobado", null], [6, "inscrito", 7, 100, 70, "aprobado", null]] },
+  { titulo: "Manejo defensivo", descripcion: "Conducción segura de vehículos de distribución",
+    instructor: "Escuela de Conductores Bolivia", lugar: "Centro de distribución", desde: -1, hasta: 1, horas: 12, cupo: 8, estado: "programada",
+    participantes: [[6, "inscrito", 7, null, null, null, null]] },
+  { titulo: "Excel intermedio para reportes", descripcion: "Tablas dinámicas, fórmulas y gráficos para informes de área",
+    instructor: "Lic. Paola Rivera", lugar: "Laboratorio de computación", desde: 10, hasta: 12, horas: 9, cupo: 10, estado: "programada",
+    participantes: [[7, "inscrito", 7, null, null, null, null], [5, "inscrito", 7, null, null, null, null], [3, "propuesto", 1, null, null, null, null]] },
+  { titulo: "Inocuidad alimentaria HACCP", descripcion: "Análisis de peligros y puntos críticos de control",
+    instructor: "Ing. Carla Gutiérrez", lugar: "Sala de capacitación, Planta Sucre", desde: 25, hasta: 26, horas: 16, cupo: 3, estado: "programada",
+    participantes: [[4, "inscrito", 7, null, null, null, null], [5, "inscrito", 7, null, null, null, null]] },
+  { titulo: "Liderazgo de equipos", descripcion: "Comunicación y gestión de equipos de trabajo",
+    instructor: "Consultora Andes", lugar: "Auditorio", desde: 5, hasta: 5, horas: 6, cupo: 15, estado: "cancelada", participantes: [] }
+];
+
+capacitaciones.forEach((c) => {
+  const idCapacitacion = insertarCapacitacion.run(
+    c.titulo, c.descripcion, c.instructor, c.lugar, sumarDias(hoy, c.desde), sumarDias(hoy, c.hasta), c.horas, c.cupo, c.estado
+  ).lastInsertRowid;
+  c.participantes.forEach((p) => insertarParticipante.run(idCapacitacion, ...p));
+});
+
 console.log("Insertando asistencia y ausencias de las últimas dos semanas...");
 const insertarAsistencia = db.prepare(`
   INSERT INTO asistencia (id_trabajador, fecha, hora_entrada, hora_salida, id_turno, minutos_retraso, horas_trabajadas)
@@ -262,3 +309,4 @@ cuentas.forEach(([idTrabajador, usuario, rol]) => {
 console.log(`- ${turnos.length} turnos, ${feriados.length} feriados y ${asignaciones.length} asignaciones de turno`);
 console.log(`- ${totalAsistencia} marcaciones de asistencia y ${totalAusencias} ausencias (últimas dos semanas)`);
 console.log(`- ${tiposPermiso.length} tipos de permiso y ${solicitudes.length} solicitudes en distintos estados del flujo`);
+console.log(`- ${capacitaciones.length} capacitaciones (finalizadas, en curso, programadas y una cancelada)`);

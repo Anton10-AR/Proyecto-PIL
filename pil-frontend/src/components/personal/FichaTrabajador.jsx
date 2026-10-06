@@ -1,13 +1,14 @@
 // Ficha del trabajador: datos, equipo a cargo, cuenta de acceso (RRHH) e historial de actividad
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { verArchivo } from "../../api/solicitudes";
 import { useAuth } from "../../contexto/useAuth";
 import {
   obtenerTrabajador, actualizarTrabajador, darDeBajaTrabajador,
   crearCuenta, actualizarCuenta, restablecerClave
 } from "../../api/trabajadores";
 import { NOMBRES_ROL, ROLES } from "../../roles";
-import { ESTADOS_SOLICITUD, fechaCorta, rangoFechas, textoRetraso, textoTipoSolicitud } from "../../formato";
+import { ESTADOS_SOLICITUD, RESULTADOS_CAPACITACION, fechaCorta, rangoFechas, textoRetraso, textoTipoSolicitud } from "../../formato";
 
 function Dato({ etiqueta, valor }) {
   return (
@@ -196,6 +197,9 @@ export default function FichaTrabajador() {
           <button role="tab" aria-selected={pestana === "solicitudes"} className={pestana === "solicitudes" ? "activa" : ""} onClick={() => setPestana("solicitudes")}>
             Solicitudes ({historial.solicitudes.length})
           </button>
+          <button role="tab" aria-selected={pestana === "capacitaciones"} className={pestana === "capacitaciones" ? "activa" : ""} onClick={() => setPestana("capacitaciones")}>
+            Capacitaciones ({historial.capacitaciones.length})
+          </button>
         </div>
 
         {pestana === "asistencia" && (
@@ -230,6 +234,36 @@ export default function FichaTrabajador() {
                   </tr>
                 ))}
                 {historial.ausencias.length === 0 && <tr><td colSpan={3} className="vacio">Sin ausencias.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {pestana === "capacitaciones" && (
+          <div className="tabla-contenedor">
+            <table>
+              <thead><tr><th>Capacitación</th><th>Fechas</th><th>Horas</th><th>Asistencia</th><th>Nota</th><th>Resultado</th><th>Certificado</th></tr></thead>
+              <tbody>
+                {historial.capacitaciones.map((c) => (
+                  <tr key={c.id}>
+                    <td><Link to={`/capacitaciones/${c.id_capacitacion}`}>{c.titulo}</Link></td>
+                    <td>{rangoFechas(c.fecha_inicio, c.fecha_fin)}</td>
+                    <td>{c.horas}</td>
+                    <td>{c.asistencia_pct !== null ? `${c.asistencia_pct}%` : "—"}</td>
+                    <td>{c.nota ?? "—"}</td>
+                    <td>
+                      {c.resultado
+                        ? <span className={`insignia ${RESULTADOS_CAPACITACION[c.resultado].clase}`}>{RESULTADOS_CAPACITACION[c.resultado].texto}</span>
+                        : c.estado === "cancelada" ? "Cancelada" : c.estado_inscripcion === "propuesto" ? "Propuesto" : "Pendiente"}
+                    </td>
+                    <td>
+                      {c.id_archivo_certificado
+                        ? <button className="boton-enlace" onClick={() => verArchivo(c.id_archivo_certificado).catch((err) => setMensaje(err.message))}>Ver</button>
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+                {historial.capacitaciones.length === 0 && <tr><td colSpan={7} className="vacio">Sin capacitaciones.</td></tr>}
               </tbody>
             </table>
           </div>

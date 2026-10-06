@@ -139,6 +139,13 @@ router.get("/:id", (req, res) => {
       SELECT s.*, tp.nombre AS tipo_permiso FROM solicitudes s
       LEFT JOIN tipos_permiso tp ON tp.id = s.id_tipo_permiso
       WHERE s.id_trabajador = ? ORDER BY s.fecha_solicitud DESC
+    `).all(trabajador.id),
+    capacitaciones: db.prepare(`
+      SELECT p.id, p.id_capacitacion, p.estado_inscripcion, p.asistencia_pct, p.nota, p.resultado, p.id_archivo_certificado,
+             c.titulo, c.fecha_inicio, c.fecha_fin, c.horas, c.estado
+      FROM participantes_capacitacion p JOIN capacitaciones c ON c.id = p.id_capacitacion
+      WHERE p.id_trabajador = ? AND p.estado_inscripcion <> 'rechazado'
+      ORDER BY c.fecha_inicio DESC
     `).all(trabajador.id)
   };
 

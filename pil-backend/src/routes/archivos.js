@@ -1,4 +1,4 @@
-// Rutas de Archivos adjuntos (respaldos de permisos; en fases siguientes, certificados).
+// Rutas de Archivos adjuntos (respaldos de permisos y certificados de capacitación).
 // Se guardan en pil-backend/uploads/ con un nombre aleatorio; la BD conserva el nombre original.
 const express = require("express");
 const path = require("path");
@@ -35,8 +35,18 @@ const subida = multer({
 
 // Trabajadores "dueños" de un archivo según dónde se usa. Cada fase que adjunte archivos agrega su consulta.
 const REFERENCIAS = [
-  "SELECT id_trabajador FROM solicitudes WHERE id_archivo_respaldo = ?"
+  "SELECT id_trabajador FROM solicitudes WHERE id_archivo_respaldo = ?",
+  "SELECT id_trabajador FROM participantes_capacitacion WHERE id_archivo_certificado = ?"
 ];
+
+// Valida que un archivo recién subido pueda asociarse: debe existir, haberlo subido el usuario
+// y no estar asociado todavía a nada. Devuelve un mensaje de error o null.
+function errorArchivoParaAsociar(idArchivo, usuario) {
+  const archivo = db.prepare("SELECT * FROM archivos WHERE id = ?").get(idArchivo);
+  if (!archivo || archivo.id_subido_por !== usuario.id) return "El archivo adjunto no es válido";
+  const enUso = REFERENCIAS.some((sql) => db.prepare(sql).all(archivo.id).length > 0);
+  return enUso ? "Ese archivo ya está asociado a otro registro" : null;
+}
 
 function puedeVerArchivo(usuario, archivo) {
   if (archivo.id_subido_por === usuario.id) return true;
@@ -83,4 +93,4 @@ router.get("/:id", (req, res) => {
   res.sendFile(ruta);
 });
 
-module.exports = { router, CARPETA };
+module.exports = { router, CARPETA, errorArchivoParaAsociar };

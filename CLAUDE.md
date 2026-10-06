@@ -53,7 +53,12 @@ El sistema está en plena ampliación a 6 módulos y 4 roles (Trabajador, Superv
   - Vacaciones: derecho según la LGT por año de servicio (`utils/vacaciones.js`, función pura con pruebas). La solicitud guarda su `gestion_inicio`; las pendientes reservan saldo y los días no usados no se acumulan.
   - Permisos: el catálogo `tipos_permiso` define el máximo por solicitud, un límite anual opcional por año calendario y si el respaldo es obligatorio.
   - Un día con una solicitud aprobada bloquea la marcación y el registro de ausencias. A la inversa, no se puede pedir una solicitud sobre días que ya tienen marcación o ausencia.
-- Archivos (`routes/archivos.js`, con `multer`): PDF o imágenes de hasta 5 MB, guardados en `pil-backend/uploads/` (ignorado por git). Solo los ve quien los subió o quien puede ver al trabajador dueño, según `REFERENCIAS`; cada módulo que adjunte archivos debe agregar ahí su consulta. El seed vacía esa carpeta.
+- Capacitación (`routes/capacitaciones.js`):
+  - Las capacitaciones son registros independientes, sin catálogo de cursos. En BD se guardan como `programada`, `finalizada` o `cancelada`. El backend deriva `estado_actual` (`en_curso` o `por_cerrar` según las fechas): no se guarda.
+  - Participantes: RRHH inscribe directamente, respetando el cupo. El supervisor solo propone a su equipo directo y antes de que empiece (`propuesto`); RRHH confirma (`inscrito`) o descarta (`rechazado`).
+  - Resultados: solo para inscritos y desde la fecha de inicio. Se registra `aprobado`, `reprobado` o `no_asistio` (este último fuerza 0 % de asistencia). El certificado solo se adjunta a los aprobados.
+  - Finalizar exige que no haya propuestas pendientes y que todos los inscritos tengan resultado. Los resultados pueden corregirse después de finalizar.
+- Archivos (`routes/archivos.js`, con `multer`): PDF o imágenes de hasta 5 MB, guardados en `pil-backend/uploads/` (ignorado por git). Solo los ve quien los subió o quien puede ver al trabajador dueño, según `REFERENCIAS`; cada módulo que adjunte archivos debe agregar ahí su consulta. Para asociar un archivo recién subido se valida con `errorArchivoParaAsociar()`: debe haberlo subido el mismo usuario y no estar en uso. El seed vacía esa carpeta.
 - `server.js` termina con un manejador de errores que responde JSON 500: el frontend siempre espera JSON.
 - La baja de trabajador es lógica (`estado = 'inactivo'`), nunca se borra la fila — necesario porque `asistencia` y `solicitudes` tienen FK hacia `trabajadores`.
 
