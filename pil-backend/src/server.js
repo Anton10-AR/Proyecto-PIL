@@ -56,17 +56,22 @@ app.use("/api/evaluaciones", evaluacionesRouter);
 app.use("/api/encuestas", encuestasRouter);
 app.use("/api/sugerencias", sugerenciasRouter);
 app.use("/api/comunicados", comunicadosRouter);
-
-// Errores no controlados: se registran en consola y se responde JSON (el frontend siempre espera JSON)
-app.use((err, req, res, next) => {
-  console.error(err);
-  if (res.headersSent) return next(err);
-  res.status(500).json({ error: "Error interno del servidor" });
-});
 app.use("/api/solicitudes", solicitudesRouter);
 // Reportes: cada rol ve su alcance (empresa, equipo o propio); exportar es solo de RRHH y Gerencia
 app.use("/api/reportes", reportesRouter);
 app.use("/api/respaldos", permitirRoles("rrhh"), respaldosRouter);
+
+// Errores no controlados: se registran en consola y se responde JSON (el frontend siempre espera JSON).
+// Debe ir DESPUÉS de todas las rutas: Express solo pasa a este manejador los errores de las rutas anteriores.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  // Cuerpo JSON mal formado: es un error del cliente, no del servidor
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "El cuerpo de la solicitud no es un JSON válido" });
+  }
+  console.error(err);
+  res.status(500).json({ error: "Error interno del servidor" });
+});
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);
